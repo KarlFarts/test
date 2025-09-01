@@ -1,162 +1,506 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { format, isToday, isThisWeek, isPast } from "date-fns";
+import { useLocation } from "wouter";
+import { 
   Users,
-  FileSignature,
   Calendar,
   CheckSquare,
   PlusCircle,
   UserPlus,
   FileText,
   ChevronRight,
+  Clock,
+  AlertCircle,
+  CalendarDays,
+  Activity,
+  TrendingUp,
+  Target,
+  CheckCircle
 } from "lucide-react";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { CreatePersonForm } from "@/components/CreatePersonForm";
+
+import type { TaskWithAssignee, EventWithStats } from "@shared/schema";
+
+interface DashboardStats {
+  totalPeople: number;
+  activePeople: number;
+  totalEvents: number;
+  upcomingEvents: number;
+  totalTasks: number;
+  pendingTasks: number;
+  completedTasksThisWeek: number;
+  overdrueTasks: number;
+}
+
+interface TasksResponse {
+  tasks: TaskWithAssignee[];
+  total: number;
+}
+
+interface EventsResponse {
+  events: EventWithStats[];
+  total: number;
+}
+
+interface PeopleResponse {
+  people: any[];
+  total: number;
+}
+
+function DailySnapshotStats() {
+  const { data: peopleData } = useQuery<PeopleResponse>({
+    queryKey: ["/api/people"],
+    queryFn: async () => {
+      const response = await fetch("/api/people?limit=1000");
+      if (!response.ok) throw new Error("Failed to fetch people");
+      return response.json();
+    },
+  });
+
+  const { data: eventsData } = useQuery<EventsResponse>({
+    queryKey: ["/api/events"],
+    queryFn: async () => {
+      const response = await fetch("/api/events?limit=1000");
+      if (!response.ok) throw new Error("Failed to fetch events");
+      return response.json();
+    },
+  });
+
+  const { data: tasksData } = useQuery<TasksResponse>({
+    queryKey: ["/api/tasks"],
+    queryFn: async () => {
+      const response = await fetch("/api/tasks?limit=1000");
+      if (!response.ok) throw new Error("Failed to fetch tasks");
+      return response.json();
+    },
+  });
+
+  const people = peopleData?.people || [];
+  const events = eventsData?.events || [];
+  const tasks = tasksData?.tasks || [];
+
+  const stats = {
+    totalPeople: people.length,
+    activePeople: people.filter(p => p.status === "active").length,
+    totalEvents: events.length,
+    upcomingEvents: events.filter(e => new Date(e.startDate) > new Date() && e.status === "scheduled").length,
+    totalTasks: tasks.length,
+    pendingTasks: tasks.filter(t => t.status === "pending").length,
+    completedTasksThisWeek: tasks.filter(t => t.status === "complete" && isThisWeek(new Date(t.updatedAt))).length,
+    overdueTasks: tasks.filter(t => t.dueDate && isPast(new Date(t.dueDate)) && t.status !== "complete").length,
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-muted-foreground">Active People</h3>
+            <Users className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="text-2xl font-bold text-foreground" data-testid="text-people-count">
+            {stats.activePeople}
+          </div>
+          <p className="text-xs text-muted-foreground">{stats.totalPeople} total registered</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-muted-foreground">Upcoming Events</h3>
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="text-2xl font-bold text-foreground" data-testid="text-events-count">
+            {stats.upcomingEvents}
+          </div>
+          <p className="text-xs text-muted-foreground">{stats.totalEvents} total events</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-muted-foreground">Pending Tasks</h3>
+            <CheckSquare className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="text-2xl font-bold text-foreground" data-testid="text-tasks-count">
+            {stats.pendingTasks}
+          </div>
+          <p className="text-xs text-destructive">
+            {stats.overdueTasks > 0 ? `${stats.overdueTasks} overdue` : "All on track"}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-muted-foreground">This Week</h3>
+            <TrendingUp className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="text-2xl font-bold text-foreground" data-testid="text-completed-count">
+            {stats.completedTasksThisWeek}
+          </div>
+          <p className="text-xs text-accent">Tasks completed</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function MyFeed() {
+  const { data: tasksData } = useQuery<TasksResponse>({
+    queryKey: ["/api/tasks"],
+    queryFn: async () => {
+      const response = await fetch("/api/tasks?limit=10");
+      if (!response.ok) throw new Error("Failed to fetch tasks");
+      return response.json();
+    },
+  });
+
+  const { data: eventsData } = useQuery<EventsResponse>({
+    queryKey: ["/api/events"],
+    queryFn: async () => {
+      const response = await fetch("/api/events?limit=10");
+      if (!response.ok) throw new Error("Failed to fetch events");
+      return response.json();
+    },
+  });
+
+  const tasks = tasksData?.tasks || [];
+  const events = eventsData?.events || [];
+
+  // Create feed from recent task updates and upcoming events
+  const feedItems = [
+    ...tasks.slice(0, 5).map(task => ({
+      id: task.id,
+      type: 'task',
+      title: task.title,
+      description: `Task ${task.status}${task.assignee ? ` - assigned to ${task.assignee.username}` : ''}`,
+      time: task.updatedAt,
+      priority: task.priority,
+    })),
+    ...events.slice(0, 3).map(event => ({
+      id: event.id,
+      type: 'event',
+      title: event.title,
+      description: `${event.eventType} - ${format(new Date(event.startDate), "MMM d, h:mm a")}`,
+      time: event.createdAt,
+      status: event.status,
+    }))
+  ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 6);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Activity className="w-5 h-5" />
+          My Feed
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {feedItems.map((item, index) => (
+            <div key={item.id} className="flex items-start space-x-3" data-testid={`feed-item-${index}`}>
+              <div className={`w-2 h-2 rounded-full mt-2 ${
+                item.type === 'task' 
+                  ? ('priority' in item && item.priority === 'urgent') ? 'bg-red-500' 
+                    : ('priority' in item && item.priority === 'high') ? 'bg-orange-500'
+                    : 'bg-blue-500'
+                  : ('status' in item && item.status === 'scheduled') ? 'bg-green-500' : 'bg-gray-500'
+              }`}></div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-foreground">
+                  <span className="font-medium">{item.title}</span>
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {item.description}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {format(new Date(item.time), "MMM d, h:mm a")}
+                </p>
+              </div>
+            </div>
+          ))}
+          {feedItems.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No recent activity
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MyEvents() {
+  const { data: eventsData } = useQuery<EventsResponse>({
+    queryKey: ["/api/events"],
+    queryFn: async () => {
+      const response = await fetch("/api/events?limit=20");
+      if (!response.ok) throw new Error("Failed to fetch events");
+      return response.json();
+    },
+  });
+
+  const events = eventsData?.events || [];
+  const upcomingEvents = events
+    .filter(event => new Date(event.startDate) > new Date())
+    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+    .slice(0, 5);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CalendarDays className="w-5 h-5" />
+          My Upcoming Events
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {upcomingEvents.map((event) => (
+            <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors" data-testid={`event-item-${event.id}`}>
+              <div className="flex-1">
+                <h4 className="font-medium text-sm">{event.title}</h4>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="outline" className="text-xs">
+                    {event.eventType}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(event.startDate), "MMM d, h:mm a")}
+                  </span>
+                  {isToday(new Date(event.startDate)) && (
+                    <Badge variant="secondary" className="text-xs">
+                      Today
+                    </Badge>
+                  )}
+                </div>
+                {event.location && (
+                  <p className="text-xs text-muted-foreground mt-1">{event.location}</p>
+                )}
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-medium">{event.totalRegistered}</div>
+                <div className="text-xs text-muted-foreground">registered</div>
+              </div>
+            </div>
+          ))}
+          {upcomingEvents.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No upcoming events
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MyTasks() {
+  const { data: tasksData } = useQuery<TasksResponse>({
+    queryKey: ["/api/tasks"],
+    queryFn: async () => {
+      const response = await fetch("/api/tasks?assignedTo=user1&limit=10");
+      if (!response.ok) throw new Error("Failed to fetch tasks");
+      return response.json();
+    },
+  });
+
+  const tasks = tasksData?.tasks || [];
+  
+  // Sort by priority and due date
+  const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+  const sortedTasks = tasks
+    .filter(task => task.status !== "complete")
+    .sort((a, b) => {
+      // First by priority
+      const priorityDiff = priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
+      if (priorityDiff !== 0) return priorityDiff;
+      
+      // Then by due date (overdue first, then earliest due date)
+      if (a.dueDate && b.dueDate) {
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      }
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
+      return 0;
+    })
+    .slice(0, 5);
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "urgent": return "bg-red-100 text-red-800 border-red-200";
+      case "high": return "bg-orange-100 text-orange-800 border-orange-200";
+      case "medium": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "low": return "bg-green-100 text-green-800 border-green-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CheckSquare className="w-5 h-5" />
+          My Priority Tasks
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {sortedTasks.map((task) => {
+            const isOverdue = task.dueDate && isPast(new Date(task.dueDate));
+            
+            return (
+              <div key={task.id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors" data-testid={`task-item-${task.id}`}>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-medium text-sm">{task.title}</h4>
+                    <Badge variant="outline" className={`text-xs ${getPriorityColor(task.priority)}`}>
+                      {task.priority}
+                    </Badge>
+                  </div>
+                  {task.description && (
+                    <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                      {task.description}
+                    </p>
+                  )}
+                  {task.dueDate && (
+                    <div className={`flex items-center gap-1 text-xs ${
+                      isOverdue ? "text-red-600" : "text-muted-foreground"
+                    }`}>
+                      <Clock className="w-3 h-3" />
+                      <span>Due {format(new Date(task.dueDate), "MMM d, yyyy")}</span>
+                      {isOverdue && <AlertCircle className="w-3 h-3" />}
+                    </div>
+                  )}
+                </div>
+                <Badge variant={task.status === "in_progress" ? "default" : "secondary"} className="text-xs">
+                  {task.status.replace("_", " ")}
+                </Badge>
+              </div>
+            );
+          })}
+          {sortedTasks.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No pending tasks assigned to you
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuickActions() {
+  const [, setLocation] = useLocation();
+  const [showCreatePerson, setShowCreatePerson] = useState(false);
+
+  const handleCreateEvent = () => {
+    setLocation("/events");
+  };
+
+  const handleCreateTask = () => {
+    setLocation("/tasks");
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="w-5 h-5" />
+            Quick Actions
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <Button 
+              variant="outline"
+              className="w-full justify-between h-auto p-4"
+              onClick={handleCreateTask}
+              data-testid="button-create-task"
+            >
+              <div className="flex items-center space-x-3">
+                <CheckSquare className="w-5 h-5 text-blue-600" />
+                <span className="font-medium">Create Task</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </Button>
+
+            <Button 
+              variant="outline"
+              className="w-full justify-between h-auto p-4"
+              onClick={handleCreateEvent}
+              data-testid="button-create-event"
+            >
+              <div className="flex items-center space-x-3">
+                <PlusCircle className="w-5 h-5 text-green-600" />
+                <span className="font-medium">Create Event</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </Button>
+
+            <Button 
+              variant="outline"
+              className="w-full justify-between h-auto p-4"
+              onClick={() => setShowCreatePerson(true)}
+              data-testid="button-add-person"
+            >
+              <div className="flex items-center space-x-3">
+                <UserPlus className="w-5 h-5 text-purple-600" />
+                <span className="font-medium">Add Person</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <CreatePersonForm 
+        open={showCreatePerson} 
+        onOpenChange={setShowCreatePerson} 
+      />
+    </>
+  );
+}
 
 export default function Dashboard() {
   return (
-    <div>
+    <div className="space-y-6">
+      {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back! Here's your campaign overview.</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Command Center</h1>
+        <p className="text-muted-foreground">Your campaign dashboard with real-time insights and quick actions.</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Active Volunteers</h3>
-              <Users className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="text-2xl font-bold text-foreground" data-testid="text-volunteers-count">
-              1,247
-            </div>
-            <p className="text-xs text-accent">+12% from last week</p>
-          </CardContent>
-        </Card>
+      {/* Daily Snapshot Stats */}
+      <DailySnapshotStats />
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Signatures Collected</h3>
-              <FileSignature className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="text-2xl font-bold text-foreground" data-testid="text-signatures-count">
-              8,432
-            </div>
-            <p className="text-xs text-accent">+5% from target</p>
-          </CardContent>
-        </Card>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column */}
+        <div className="space-y-6">
+          <MyFeed />
+          <QuickActions />
+        </div>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Events This Week</h3>
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="text-2xl font-bold text-foreground" data-testid="text-events-count">
-              12
-            </div>
-            <p className="text-xs text-muted-foreground">3 today</p>
-          </CardContent>
-        </Card>
+        {/* Middle Column */}
+        <div className="space-y-6">
+          <MyEvents />
+        </div>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Pending Tasks</h3>
-              <CheckSquare className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="text-2xl font-bold text-foreground" data-testid="text-tasks-count">
-              23
-            </div>
-            <p className="text-xs text-destructive">3 overdue</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions & Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <button 
-                className="w-full flex items-center justify-between p-3 text-left rounded-md hover:bg-secondary transition-colors"
-                data-testid="button-create-event"
-              >
-                <div className="flex items-center space-x-3">
-                  <PlusCircle className="w-5 h-5 text-primary" />
-                  <span className="font-medium">Create New Event</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </button>
-
-              <button 
-                className="w-full flex items-center justify-between p-3 text-left rounded-md hover:bg-secondary transition-colors"
-                data-testid="button-add-volunteer"
-              >
-                <div className="flex items-center space-x-3">
-                  <UserPlus className="w-5 h-5 text-accent" />
-                  <span className="font-medium">Add Volunteer</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </button>
-
-              <button 
-                className="w-full flex items-center justify-between p-3 text-left rounded-md hover:bg-secondary transition-colors"
-                data-testid="button-generate-report"
-              >
-                <div className="flex items-center space-x-3">
-                  <FileText className="w-5 h-5 text-orange-500" />
-                  <span className="font-medium">Generate Report</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3" data-testid="activity-item-1">
-                <div className="w-2 h-2 bg-accent rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm text-foreground">
-                    <span className="font-medium">John Smith</span> completed signature collection in District 5
-                  </p>
-                  <p className="text-xs text-muted-foreground">2 hours ago</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3" data-testid="activity-item-2">
-                <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm text-foreground">
-                    <span className="font-medium">Rally at City Hall</span> scheduled for tomorrow
-                  </p>
-                  <p className="text-xs text-muted-foreground">4 hours ago</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3" data-testid="activity-item-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm text-foreground">
-                    <span className="font-medium">Maria Garcia</span> submitted ballot access forms
-                  </p>
-                  <p className="text-xs text-muted-foreground">6 hours ago</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Right Column */}
+        <div className="space-y-6">
+          <MyTasks />
+        </div>
       </div>
     </div>
   );
