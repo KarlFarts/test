@@ -1,5 +1,7 @@
 import { SidebarProvider } from "@/hooks/useSidebar";
 import Sidebar from "./Sidebar";
+import FloatingQuickActions from "./FloatingQuickActions";
+import { useHotkeys } from "@/hooks/useHotkeys";
 import Header from "./Header";
 
 interface AppLayoutProps {
@@ -7,6 +9,7 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
+  useHotkeys();
   return (
     <SidebarProvider>
       <div className="flex h-screen overflow-hidden">
@@ -18,6 +21,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               {children}
             </div>
           </main>
+                <FloatingQuickActions />
         </div>
       </div>
     </SidebarProvider>

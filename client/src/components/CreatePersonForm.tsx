@@ -3,12 +3,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle 
 } from "@/components/ui/dialog";
+import { GlassModal } from "@/components/ui/glass-panel";
+import { GradientButton, PrimaryButton } from "@/components/ui/gradient-button";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { modalContent, fadeInUp, staggerContainer, staggerItem } from "@/lib/animations";
 import { 
   Form, 
   FormControl, 
@@ -159,34 +164,66 @@ export function CreatePersonForm({ open, onOpenChange }: CreatePersonFormProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <User className="w-5 h-5" />
-            <span>Add New Person</span>
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="p-0 max-w-2xl bg-transparent border-0 shadow-none">
+        <AnimatePresence mode="wait">
+          {open && (
+            <GlassModal
+              className="max-w-[500px] max-h-[90vh] overflow-hidden"
+              variants={modalContent}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <motion.div
+                className="overflow-y-auto max-h-[80vh]"
+                variants={staggerContainer}
+                initial="initial"
+                animate="animate"
+              >
+                <motion.div variants={staggerItem}>
+                  <DialogHeader className="pb-6">
+                    <DialogTitle className="flex items-center space-x-2 text-xl font-semibold">
+                      <motion.div
+                        className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg text-white"
+                        whileHover={{ scale: 1.05, rotate: 5 }}
+                        transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                      >
+                        <User className="w-5 h-5" />
+                      </motion.div>
+                      <span>Add New Person</span>
+                    </DialogTitle>
+                  </DialogHeader>
+                </motion.div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Duplicate Warnings */}
-            {hasWarnings && (
-              <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
-                <AlertTriangle className="h-4 w-4 text-orange-500" />
-                <AlertDescription className="text-sm">
-                  <div className="space-y-1">
-                    <p className="font-medium">Potential duplicate found:</p>
-                    {duplicateWarnings.emailExists && (
-                      <p>• An account with this email already exists</p>
-                    )}
-                    {duplicateWarnings.phoneExists && (
-                      <p>• An account with this phone number already exists</p>
-                    )}
-                    <p className="text-xs mt-2">You can still create this person if needed.</p>
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    {/* Duplicate Warnings */}
+                    <AnimatePresence>
+                      {hasWarnings && (
+                        <motion.div
+                          variants={fadeInUp}
+                          initial="initial"
+                          animate="animate"
+                          exit="exit"
+                        >
+                          <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950 shadow-elevation-2">
+                            <AlertTriangle className="h-4 w-4 text-orange-500" />
+                            <AlertDescription className="text-sm">
+                              <div className="space-y-1">
+                                <p className="font-medium">Potential duplicate found:</p>
+                                {duplicateWarnings.emailExists && (
+                                  <p>• An account with this email already exists</p>
+                                )}
+                                {duplicateWarnings.phoneExists && (
+                                  <p>• An account with this phone number already exists</p>
+                                )}
+                                <p className="text-xs mt-2">You can still create this person if needed.</p>
+                              </div>
+                            </AlertDescription>
+                          </Alert>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
             {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
@@ -351,38 +388,48 @@ export function CreatePersonForm({ open, onOpenChange }: CreatePersonFormProps) 
               />
             </div>
 
-            {/* Form Actions */}
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => {
-                  form.reset();
-                  setDuplicateWarnings({ emailExists: false, phoneExists: false });
-                  onOpenChange(false);
-                }}
-                data-testid="button-cancel"
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={createPersonMutation.isPending || isCheckingDuplicates}
-                className={hasWarnings ? "bg-orange-600 hover:bg-orange-700" : ""}
-                data-testid="button-create-person"
-              >
-                {createPersonMutation.isPending ? "Creating..." : 
-                 hasWarnings ? "Create Anyway" : "Create Person"}
-              </Button>
-            </div>
+                    {/* Form Actions */}
+                    <motion.div 
+                      className="flex justify-end space-x-3 pt-4"
+                      variants={staggerItem}
+                    >
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => {
+                          form.reset();
+                          setDuplicateWarnings({ emailExists: false, phoneExists: false });
+                          onOpenChange(false);
+                        }}
+                        data-testid="button-cancel"
+                      >
+                        Cancel
+                      </Button>
+                      <PrimaryButton 
+                        type="submit" 
+                        disabled={createPersonMutation.isPending || isCheckingDuplicates}
+                        loading={createPersonMutation.isPending}
+                        className={hasWarnings ? "from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700" : ""}
+                        data-testid="button-create-person"
+                      >
+                        {hasWarnings ? "Create Anyway" : "Create Person"}
+                      </PrimaryButton>
+                    </motion.div>
 
-            {/* Validation Summary */}
-            <div className="text-xs text-muted-foreground">
-              <p>* Required fields</p>
-              <p>Either email or phone number must be provided</p>
-            </div>
-          </form>
-        </Form>
+                    {/* Validation Summary */}
+                    <motion.div 
+                      className="text-xs text-muted-foreground"
+                      variants={staggerItem}
+                    >
+                      <p>* Required fields</p>
+                      <p>Either email or phone number must be provided</p>
+                    </motion.div>
+                  </form>
+                </Form>
+              </motion.div>
+            </GlassModal>
+          )}
+        </AnimatePresence>
       </DialogContent>
     </Dialog>
   );

@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { format } from "date-fns";
+import { useBreadcrumbs } from "@/hooks/useBreadcrumbs";
+import { useRecentItems } from "@/hooks/useRecentItems";
 import { 
   ArrowLeft, 
   Edit, 
@@ -30,7 +32,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import type { Person, InsertPerson } from "@shared/schema";
 import { insertPersonSchema } from "@shared/schema";
@@ -129,6 +130,8 @@ const mockCommunicationLog = [
 export default function PersonDetail() {
   const [, params] = useRoute("/people/:id");
   const personId = params?.id;
+  const { setCrumbs } = useBreadcrumbs();
+  const { addItem } = useRecentItems();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -194,6 +197,17 @@ export default function PersonDetail() {
   const onSubmit = (data: InsertPerson) => {
     updatePersonMutation.mutate(data);
   };
+
+  // Update breadcrumbs when person data loads
+  useEffect(() => {
+    if (person) {
+      setCrumbs([
+        { label: "People", href: "/people" },
+        { label: person.name },
+      ]);
+      addItem({ label: person.name, href: window.location.pathname, type: "person" });
+    }
+  }, [person, setCrumbs]);
 
   if (isLoading) {
     return (
@@ -544,7 +558,7 @@ export default function PersonDetail() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input {...field} type="email" data-testid="input-edit-email" />
+                      <Input {...field} value={field.value || ""} type="email" data-testid="input-edit-email" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

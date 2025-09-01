@@ -1,5 +1,17 @@
+import React from "react";
 import { useLocation } from "wouter";
 import { useSidebar } from "@/hooks/useSidebar";
+import { useRecentItems } from "@/hooks/useRecentItems";
+import { useBreadcrumbs } from "@/hooks/useBreadcrumbs";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import RecentDropdown from "./RecentDropdown";
 import {
   Menu,
   PanelLeft,
@@ -25,8 +37,17 @@ const routeTitles: Record<string, { breadcrumb: string; section: string }> = {
 export default function Header() {
   const { toggleCollapse, toggleMobile } = useSidebar();
   const [location] = useLocation();
+  const { crumbs } = useBreadcrumbs();
+  const { addItem } = useRecentItems();
   
   const currentPage = routeTitles[location] || { breadcrumb: "Dashboard", section: "Command Center" };
+
+  // record location to recent items (skip dynamic IDs handled elsewhere)
+  React.useEffect(() => {
+    if (routeTitles[location]) {
+      addItem({ label: currentPage.breadcrumb, href: location });
+    }
+  }, [location]);
 
   return (
     <header className="bg-card border-b border-border shadow-sm z-10">
@@ -51,11 +72,32 @@ export default function Header() {
           </button>
 
           {/* Breadcrumb */}
-          <nav className="hidden sm:flex items-center space-x-2 text-sm">
-            <span className="text-muted-foreground">{currentPage.section}</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium text-foreground">{currentPage.breadcrumb}</span>
-          </nav>
+          <div className="hidden sm:block">
+            {crumbs.length > 0 ? (
+              <Breadcrumb>
+                <BreadcrumbList>
+                  {crumbs.map((c, idx) => (
+                    <React.Fragment key={idx}>
+                      <BreadcrumbItem>
+                        {c.href ? (
+                          <BreadcrumbLink href={c.href}>{c.label}</BreadcrumbLink>
+                        ) : (
+                          <BreadcrumbPage>{c.label}</BreadcrumbPage>
+                        )}
+                      </BreadcrumbItem>
+                      {idx < crumbs.length - 1 && <BreadcrumbSeparator />}
+                    </React.Fragment>
+                  ))}
+                </BreadcrumbList>
+              </Breadcrumb>
+            ) : (
+              <nav className="flex items-center space-x-2 text-sm">
+                <span className="text-muted-foreground">{currentPage.section}</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium text-foreground">{currentPage.breadcrumb}</span>
+              </nav>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center space-x-4">
@@ -68,10 +110,12 @@ export default function Header() {
                 placeholder="Search..."
                 className="pl-10 pr-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                 data-testid="input-search"
+                data-hotkey-search
               />
             </div>
           </div>
 
+          <RecentDropdown />
           {/* Notifications */}
           <button 
             className="relative p-2 rounded-md hover:bg-secondary"

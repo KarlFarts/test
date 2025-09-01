@@ -2,7 +2,9 @@ import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { BreadcrumbsProvider } from "@/hooks/useBreadcrumbs";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useCommandPalette } from "@/components/ui/command-palette";
 import AppLayout from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import MyTasks from "@/pages/MyTasks";
@@ -17,6 +19,8 @@ import Templates from "@/pages/Templates";
 import NotFound from "@/pages/not-found";
 
 function Router() {
+  const { CommandPalette } = useCommandPalette();
+  
   return (
     <AppLayout>
       <Switch>
@@ -33,6 +37,7 @@ function Router() {
         <Route path="/templates" component={Templates} />
         <Route component={NotFound} />
       </Switch>
+      <CommandPalette />
     </AppLayout>
   );
 }
@@ -42,7 +47,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <BreadcrumbsProvider>
+          <Router />
+        </BreadcrumbsProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
