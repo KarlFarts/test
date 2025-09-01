@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPersonSchema, insertEventSchema, insertEventRegistrationSchema } from "@shared/schema";
+import { insertPersonSchema, insertEventSchema, insertEventRegistrationSchema, insertTaskSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -207,6 +207,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(registration);
     } catch (error) {
       res.status(400).json({ error: "Failed to update registration status" });
+    }
+  });
+
+  // Task routes
+  app.get("/api/tasks", async (req, res) => {
+    try {
+      const { priority, status, assignedTo, createdBy, search, page = "1", limit = "50" } = req.query;
+      
+      const filters = {
+        priority: priority as string,
+        status: status as string,
+        assignedTo: assignedTo as string,
+        createdBy: createdBy as string,
+        search: search as string,
+      };
+
+      const pagination = {
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+      };
+
+      const result = await storage.getTasks(filters, pagination);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch tasks" });
+    }
+  });
+
+  app.get("/api/tasks/:id", async (req, res) => {
+    try {
+      const task = await storage.getTask(req.params.id);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      res.json(task);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch task" });
+    }
+  });
+
+  app.post("/api/tasks", async (req, res) => {
+    try {
+      const validatedData = insertTaskSchema.parse(req.body);
+      const task = await storage.createTask(validatedData);
+      res.status(201).json(task);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid task data" });
+    }
+  });
+
+  app.patch("/api/tasks/:id", async (req, res) => {
+    try {
+      const validatedData = insertTaskSchema.partial().parse(req.body);
+      const task = await storage.updateTask(req.params.id, validatedData);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      res.json(task);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid task data" });
+    }
+  });
+
+  app.delete("/api/tasks/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteTask(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete task" });
     }
   });
 

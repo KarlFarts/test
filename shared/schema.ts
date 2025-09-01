@@ -48,6 +48,19 @@ export const eventRegistrations = pgTable("event_registrations", {
   notes: text("notes"),
 });
 
+export const tasks = pgTable("tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  priority: text("priority").notNull().default("medium"), // low, medium, high, urgent
+  status: text("status").notNull().default("pending"), // pending, in_progress, complete
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  createdBy: varchar("created_by").references(() => users.id).notNull(),
+  dueDate: timestamp("due_date"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -66,6 +79,12 @@ export const insertEventSchema = createInsertSchema(events).omit({
 export const insertEventRegistrationSchema = createInsertSchema(eventRegistrations).omit({
   id: true,
   registeredAt: true,
+});
+
+export const insertTaskSchema = createInsertSchema(tasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Phone number formatting and validation
@@ -97,9 +116,23 @@ export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type Event = typeof events.$inferSelect;
 export type InsertEventRegistration = z.infer<typeof insertEventRegistrationSchema>;
 export type EventRegistration = typeof eventRegistrations.$inferSelect;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type Task = typeof tasks.$inferSelect;
 
 // Extended event type with registration counts
 export type EventWithStats = Event & {
   totalRegistered: number;
   totalAttended: number;
+};
+
+// Extended task type with assignee information
+export type TaskWithAssignee = Task & {
+  assignee?: {
+    id: string;
+    username: string;
+  };
+  creator: {
+    id: string;
+    username: string;
+  };
 };

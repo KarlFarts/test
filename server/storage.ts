@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Person, type InsertPerson, type Event, type InsertEvent, type EventRegistration, type InsertEventRegistration, type EventWithStats } from "@shared/schema";
+import { type User, type InsertUser, type Person, type InsertPerson, type Event, type InsertEvent, type EventRegistration, type InsertEventRegistration, type EventWithStats, type Task, type InsertTask, type TaskWithAssignee } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 // modify the interface with any CRUD methods
@@ -33,6 +33,13 @@ export interface IStorage {
   
   // Event Stats
   getEventStats(): Promise<{ upcoming: number; totalRegistered: number; totalAttended: number }>;
+  
+  // Task CRUD operations
+  getTasks(filters?: { priority?: string; status?: string; assignedTo?: string; createdBy?: string; search?: string }, pagination?: { page: number; limit: number }): Promise<{ tasks: TaskWithAssignee[]; total: number }>;
+  getTask(id: string): Promise<TaskWithAssignee | undefined>;
+  createTask(task: InsertTask): Promise<Task>;
+  updateTask(id: string, task: Partial<InsertTask>): Promise<Task | undefined>;
+  deleteTask(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -40,16 +47,44 @@ export class MemStorage implements IStorage {
   private people: Map<string, Person>;
   private events: Map<string, Event>;
   private eventRegistrations: Map<string, EventRegistration>;
+  private tasks: Map<string, Task>;
 
   constructor() {
     this.users = new Map();
     this.people = new Map();
     this.events = new Map();
     this.eventRegistrations = new Map();
+    this.tasks = new Map();
     
     // Add some sample data
+    this.seedUsersData();
     this.seedPeopleData();
     this.seedEventsData();
+    this.seedTasksData();
+  }
+
+  private seedUsersData() {
+    const sampleUsers: User[] = [
+      {
+        id: "user1",
+        username: "admin",
+        password: "hashedpassword1",
+      },
+      {
+        id: "user2", 
+        username: "john.doe",
+        password: "hashedpassword2",
+      },
+      {
+        id: "user3",
+        username: "jane.smith", 
+        password: "hashedpassword3",
+      },
+    ];
+
+    sampleUsers.forEach(user => {
+      this.users.set(user.id, user);
+    });
   }
 
   private seedPeopleData() {
@@ -373,6 +408,75 @@ export class MemStorage implements IStorage {
     });
   }
 
+  private seedTasksData() {
+    const sampleTasks: Task[] = [
+      {
+        id: randomUUID(),
+        title: "Design campaign flyers",
+        description: "Create compelling flyers for the upcoming rally",
+        priority: "high",
+        status: "pending",
+        assignedTo: "user2",
+        createdBy: "user1",
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: randomUUID(),
+        title: "Update volunteer database",
+        description: "Clean up contact information and add new volunteers",
+        priority: "medium",
+        status: "in_progress",
+        assignedTo: "user3",
+        createdBy: "user1",
+        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+        updatedAt: new Date(),
+      },
+      {
+        id: randomUUID(),
+        title: "Schedule phone banking sessions",
+        description: "Coordinate volunteer schedules for next week's phone banking",
+        priority: "urgent",
+        status: "complete",
+        assignedTo: "user2",
+        createdBy: "user1",
+        dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+        updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+      },
+      {
+        id: randomUUID(),
+        title: "Prepare rally materials",
+        description: "Order banners, signs, and promotional materials for downtown rally",
+        priority: "high",
+        status: "pending",
+        assignedTo: null,
+        createdBy: "user1",
+        dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), // 10 days from now
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: randomUUID(),
+        title: "Social media content creation",
+        description: "Create posts for Facebook, Twitter, and Instagram for this week",
+        priority: "medium",
+        status: "in_progress",
+        assignedTo: "user3",
+        createdBy: "user2",
+        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+        updatedAt: new Date(),
+      },
+    ];
+
+    sampleTasks.forEach(task => {
+      this.tasks.set(task.id, task);
+    });
+  }
+
   // Event methods
   async getEvents(
     filters?: { eventType?: string; status?: string; location?: string; startDate?: string; endDate?: string; search?: string },
@@ -555,6 +659,110 @@ export class MemStorage implements IStorage {
     ).length;
 
     return { upcoming, totalRegistered, totalAttended };
+  }
+
+  // Task methods
+  async getTasks(
+    filters?: { priority?: string; status?: string; assignedTo?: string; createdBy?: string; search?: string },
+    pagination?: { page: number; limit: number }
+  ): Promise<{ tasks: TaskWithAssignee[]; total: number }> {
+    let filteredTasks = Array.from(this.tasks.values());
+
+    // Apply filters
+    if (filters) {
+      if (filters.priority) {
+        filteredTasks = filteredTasks.filter(task => task.priority === filters.priority);
+      }
+      if (filters.status) {
+        filteredTasks = filteredTasks.filter(task => task.status === filters.status);
+      }
+      if (filters.assignedTo) {
+        filteredTasks = filteredTasks.filter(task => task.assignedTo === filters.assignedTo);
+      }
+      if (filters.createdBy) {
+        filteredTasks = filteredTasks.filter(task => task.createdBy === filters.createdBy);
+      }
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        filteredTasks = filteredTasks.filter(task =>
+          task.title.toLowerCase().includes(searchLower) ||
+          (task.description && task.description.toLowerCase().includes(searchLower))
+        );
+      }
+    }
+
+    // Add assignee and creator information
+    const tasksWithAssignee: TaskWithAssignee[] = filteredTasks.map(task => {
+      const assignee = task.assignedTo ? this.users.get(task.assignedTo) : undefined;
+      const creator = this.users.get(task.createdBy);
+      
+      return {
+        ...task,
+        assignee: assignee ? { id: assignee.id, username: assignee.username } : undefined,
+        creator: creator ? { id: creator.id, username: creator.username } : { id: task.createdBy, username: "Unknown" }
+      };
+    });
+
+    // Sort by creation date (newest first)
+    tasksWithAssignee.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    // Apply pagination
+    const page = pagination?.page || 1;
+    const limit = pagination?.limit || 50;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedTasks = tasksWithAssignee.slice(startIndex, endIndex);
+
+    return { tasks: paginatedTasks, total: tasksWithAssignee.length };
+  }
+
+  async getTask(id: string): Promise<TaskWithAssignee | undefined> {
+    const task = this.tasks.get(id);
+    if (!task) return undefined;
+
+    const assignee = task.assignedTo ? this.users.get(task.assignedTo) : undefined;
+    const creator = this.users.get(task.createdBy);
+
+    return {
+      ...task,
+      assignee: assignee ? { id: assignee.id, username: assignee.username } : undefined,
+      creator: creator ? { id: creator.id, username: creator.username } : { id: task.createdBy, username: "Unknown" }
+    };
+  }
+
+  async createTask(taskData: InsertTask): Promise<Task> {
+    const id = randomUUID();
+    const task: Task = {
+      id,
+      title: taskData.title,
+      description: taskData.description ?? null,
+      priority: taskData.priority ?? "medium",
+      status: taskData.status ?? "pending",
+      assignedTo: taskData.assignedTo ?? null,
+      createdBy: taskData.createdBy,
+      dueDate: taskData.dueDate ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.tasks.set(id, task);
+    return task;
+  }
+
+  async updateTask(id: string, updateData: Partial<InsertTask>): Promise<Task | undefined> {
+    const existingTask = this.tasks.get(id);
+    if (!existingTask) return undefined;
+    
+    const updatedTask: Task = { 
+      ...existingTask, 
+      ...updateData, 
+      updatedAt: new Date() 
+    };
+    this.tasks.set(id, updatedTask);
+    return updatedTask;
+  }
+
+  async deleteTask(id: string): Promise<boolean> {
+    return this.tasks.delete(id);
   }
 }
 
