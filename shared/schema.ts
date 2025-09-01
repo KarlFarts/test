@@ -22,6 +22,32 @@ export const people = pgTable("people", {
   lastContact: timestamp("last_contact"),
 });
 
+export const events = pgTable("events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  eventType: text("event_type").notNull(), // rally, canvassing, phone-banking, fundraiser, meeting, training
+  status: text("status").notNull().default("scheduled"), // scheduled, ongoing, completed, cancelled
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  location: text("location"),
+  virtualLink: text("virtual_link"),
+  maxCapacity: varchar("max_capacity"),
+  registrationDeadline: timestamp("registration_deadline"),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+export const eventRegistrations = pgTable("event_registrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => events.id).notNull(),
+  personId: varchar("person_id").references(() => people.id).notNull(),
+  registrationStatus: text("registration_status").notNull().default("registered"), // registered, confirmed, attended, no-show, cancelled
+  registeredAt: timestamp("registered_at").notNull().default(sql`now()`),
+  notes: text("notes"),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -29,6 +55,17 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export const insertPersonSchema = createInsertSchema(people).omit({
   id: true,
+});
+
+export const insertEventSchema = createInsertSchema(events).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEventRegistrationSchema = createInsertSchema(eventRegistrations).omit({
+  id: true,
+  registeredAt: true,
 });
 
 // Phone number formatting and validation
@@ -56,3 +93,13 @@ export type User = typeof users.$inferSelect;
 export type InsertPerson = z.infer<typeof insertPersonSchema>;
 export type Person = typeof people.$inferSelect;
 export type CreatePerson = z.infer<typeof createPersonSchema>;
+export type InsertEvent = z.infer<typeof insertEventSchema>;
+export type Event = typeof events.$inferSelect;
+export type InsertEventRegistration = z.infer<typeof insertEventRegistrationSchema>;
+export type EventRegistration = typeof eventRegistrations.$inferSelect;
+
+// Extended event type with registration counts
+export type EventWithStats = Event & {
+  totalRegistered: number;
+  totalAttended: number;
+};

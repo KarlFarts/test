@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Person, type InsertPerson } from "@shared/schema";
+import { type User, type InsertUser, type Person, type InsertPerson, type Event, type InsertEvent, type EventRegistration, type InsertEventRegistration, type EventWithStats } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 // modify the interface with any CRUD methods
@@ -18,18 +18,38 @@ export interface IStorage {
   
   // Duplicate checking
   checkDuplicates(email?: string, phone?: string): Promise<{ emailExists: boolean; phoneExists: boolean }>;
+  
+  // Events CRUD operations
+  getEvents(filters?: { eventType?: string; status?: string; location?: string; startDate?: string; endDate?: string; search?: string }, pagination?: { page: number; limit: number }): Promise<{ events: EventWithStats[]; total: number }>;
+  getEvent(id: string): Promise<EventWithStats | undefined>;
+  createEvent(event: InsertEvent): Promise<Event>;
+  updateEvent(id: string, event: Partial<InsertEvent>): Promise<Event | undefined>;
+  deleteEvent(id: string): Promise<boolean>;
+  
+  // Event Registration operations
+  registerForEvent(registration: InsertEventRegistration): Promise<EventRegistration>;
+  getEventRegistrations(eventId: string): Promise<EventRegistration[]>;
+  updateRegistrationStatus(id: string, status: string): Promise<EventRegistration | undefined>;
+  
+  // Event Stats
+  getEventStats(): Promise<{ upcoming: number; totalRegistered: number; totalAttended: number }>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private people: Map<string, Person>;
+  private events: Map<string, Event>;
+  private eventRegistrations: Map<string, EventRegistration>;
 
   constructor() {
     this.users = new Map();
     this.people = new Map();
+    this.events = new Map();
+    this.eventRegistrations = new Map();
     
-    // Add some sample people data
+    // Add some sample data
     this.seedPeopleData();
+    this.seedEventsData();
   }
 
   private seedPeopleData() {
@@ -139,9 +159,9 @@ export class MemStorage implements IStorage {
         const searchLower = filters.search.toLowerCase();
         filteredPeople = filteredPeople.filter(person =>
           person.name.toLowerCase().includes(searchLower) ||
-          person.email.toLowerCase().includes(searchLower) ||
-          person.phone?.toLowerCase().includes(searchLower) ||
-          person.location?.toLowerCase().includes(searchLower)
+          (person.email && person.email.toLowerCase().includes(searchLower)) ||
+          (person.phone && person.phone.toLowerCase().includes(searchLower)) ||
+          (person.location && person.location.toLowerCase().includes(searchLower))
         );
       }
     }
@@ -164,10 +184,16 @@ export class MemStorage implements IStorage {
   async createPerson(insertPerson: InsertPerson): Promise<Person> {
     const id = randomUUID();
     const person: Person = { 
-      ...insertPerson, 
       id,
+      name: insertPerson.name,
+      firstName: insertPerson.firstName ?? null,
+      lastName: insertPerson.lastName ?? null,
+      email: insertPerson.email ?? null,
+      phone: insertPerson.phone ?? null,
+      location: insertPerson.location ?? null,
       status: insertPerson.status || "active",
-      volunteerLevel: insertPerson.volunteerLevel || "new"
+      volunteerLevel: insertPerson.volunteerLevel || "new",
+      lastContact: insertPerson.lastContact ?? null
     };
     this.people.set(id, person);
     return person;
@@ -193,6 +219,342 @@ export class MemStorage implements IStorage {
 
   async deletePerson(id: string): Promise<boolean> {
     return this.people.delete(id);
+  }
+
+  private seedEventsData() {
+    const now = new Date();
+    const sampleEvents: Event[] = [
+      {
+        id: randomUUID(),
+        title: "Community Town Hall",
+        description: "Join us for our monthly community discussion about local issues and upcoming initiatives.",
+        eventType: "meeting",
+        status: "scheduled",
+        startDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        endDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hours later
+        location: "Community Center, 123 Main St",
+        virtualLink: null,
+        maxCapacity: "100",
+        registrationDeadline: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
+        createdBy: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: randomUUID(),
+        title: "Neighborhood Canvassing",
+        description: "Door-to-door outreach to connect with voters in the downtown district.",
+        eventType: "canvassing",
+        status: "scheduled", 
+        startDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+        endDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000), // 4 hours later
+        location: "Downtown District",
+        virtualLink: null,
+        maxCapacity: "25",
+        registrationDeadline: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
+        createdBy: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: randomUUID(),
+        title: "Phone Bank Training",
+        description: "Learn effective phone banking techniques and voter outreach strategies.",
+        eventType: "training",
+        status: "scheduled",
+        startDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000), // 10 days from now
+        endDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000), // 3 hours later
+        location: "Campaign Headquarters",
+        virtualLink: "https://zoom.us/j/1234567890",
+        maxCapacity: "50",
+        registrationDeadline: new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000),
+        createdBy: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: randomUUID(),
+        title: "Fundraising Gala",
+        description: "Annual fundraising dinner with guest speakers and live entertainment.",
+        eventType: "fundraiser",
+        status: "scheduled",
+        startDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000), // 5 hours later
+        location: "Grand Ballroom, Hotel Plaza",
+        virtualLink: null,
+        maxCapacity: "200",
+        registrationDeadline: new Date(now.getTime() + 25 * 24 * 60 * 60 * 1000),
+        createdBy: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: randomUUID(),
+        title: "Victory Rally",
+        description: "Pre-election rally to energize supporters and volunteers.",
+        eventType: "rally",
+        status: "completed",
+        startDate: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+        endDate: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hours later
+        location: "City Park Amphitheater",
+        virtualLink: null,
+        maxCapacity: "500",
+        registrationDeadline: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000),
+        createdBy: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+    ];
+
+    sampleEvents.forEach(event => {
+      this.events.set(event.id, event);
+    });
+
+    // Add sample registrations
+    const eventIds = Array.from(this.events.keys());
+    const personIds = Array.from(this.people.keys());
+    
+    const sampleRegistrations: EventRegistration[] = [
+      // Town Hall registrations
+      {
+        id: randomUUID(),
+        eventId: eventIds[0],
+        personId: personIds[0],
+        registrationStatus: "registered",
+        registeredAt: new Date(),
+        notes: null,
+      },
+      {
+        id: randomUUID(),
+        eventId: eventIds[0],
+        personId: personIds[1],
+        registrationStatus: "confirmed",
+        registeredAt: new Date(),
+        notes: null,
+      },
+      // Canvassing registrations
+      {
+        id: randomUUID(),
+        eventId: eventIds[1],
+        personId: personIds[2],
+        registrationStatus: "registered",
+        registeredAt: new Date(),
+        notes: "First time volunteer",
+      },
+      // Victory Rally registrations (completed event)
+      {
+        id: randomUUID(),
+        eventId: eventIds[4],
+        personId: personIds[0],
+        registrationStatus: "attended",
+        registeredAt: new Date(),
+        notes: null,
+      },
+      {
+        id: randomUUID(),
+        eventId: eventIds[4],
+        personId: personIds[1],
+        registrationStatus: "attended",
+        registeredAt: new Date(),
+        notes: null,
+      },
+      {
+        id: randomUUID(),
+        eventId: eventIds[4],
+        personId: personIds[2],
+        registrationStatus: "no-show",
+        registeredAt: new Date(),
+        notes: null,
+      },
+    ];
+
+    sampleRegistrations.forEach(reg => {
+      this.eventRegistrations.set(reg.id, reg);
+    });
+  }
+
+  // Event methods
+  async getEvents(
+    filters?: { eventType?: string; status?: string; location?: string; startDate?: string; endDate?: string; search?: string },
+    pagination?: { page: number; limit: number }
+  ): Promise<{ events: EventWithStats[]; total: number }> {
+    let filteredEvents = Array.from(this.events.values());
+
+    // Apply filters
+    if (filters) {
+      if (filters.eventType) {
+        filteredEvents = filteredEvents.filter(event => event.eventType === filters.eventType);
+      }
+      if (filters.status) {
+        filteredEvents = filteredEvents.filter(event => event.status === filters.status);
+      }
+      if (filters.location) {
+        filteredEvents = filteredEvents.filter(event => 
+          event.location && event.location.toLowerCase().includes(filters.location!.toLowerCase())
+        );
+      }
+      if (filters.startDate) {
+        const startDate = new Date(filters.startDate);
+        filteredEvents = filteredEvents.filter(event => event.startDate >= startDate);
+      }
+      if (filters.endDate) {
+        const endDate = new Date(filters.endDate);
+        filteredEvents = filteredEvents.filter(event => event.startDate <= endDate);
+      }
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        filteredEvents = filteredEvents.filter(event =>
+          event.title.toLowerCase().includes(searchLower) ||
+          (event.description && event.description.toLowerCase().includes(searchLower)) ||
+          (event.location && event.location.toLowerCase().includes(searchLower))
+        );
+      }
+    }
+
+    // Add registration stats to each event
+    const eventsWithStats: EventWithStats[] = filteredEvents.map(event => {
+      const registrations = Array.from(this.eventRegistrations.values())
+        .filter(reg => reg.eventId === event.id);
+      
+      const totalRegistered = registrations.length;
+      const totalAttended = registrations.filter(reg => reg.registrationStatus === "attended").length;
+
+      return {
+        ...event,
+        totalRegistered,
+        totalAttended
+      };
+    });
+
+    // Sort by start date (newest first)
+    eventsWithStats.sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
+
+    const total = eventsWithStats.length;
+
+    // Apply pagination
+    if (pagination) {
+      const start = (pagination.page - 1) * pagination.limit;
+      return { 
+        events: eventsWithStats.slice(start, start + pagination.limit), 
+        total 
+      };
+    }
+
+    return { events: eventsWithStats, total };
+  }
+
+  async getEvent(id: string): Promise<EventWithStats | undefined> {
+    const event = this.events.get(id);
+    if (!event) return undefined;
+
+    const registrations = Array.from(this.eventRegistrations.values())
+      .filter(reg => reg.eventId === id);
+    
+    const totalRegistered = registrations.length;
+    const totalAttended = registrations.filter(reg => reg.registrationStatus === "attended").length;
+
+    return {
+      ...event,
+      totalRegistered,
+      totalAttended
+    };
+  }
+
+  async createEvent(insertEvent: InsertEvent): Promise<Event> {
+    const id = randomUUID();
+    const event: Event = {
+      id,
+      title: insertEvent.title,
+      description: insertEvent.description ?? null,
+      eventType: insertEvent.eventType,
+      status: insertEvent.status ?? "scheduled",
+      startDate: insertEvent.startDate,
+      endDate: insertEvent.endDate ?? null,
+      location: insertEvent.location ?? null,
+      virtualLink: insertEvent.virtualLink ?? null,
+      maxCapacity: insertEvent.maxCapacity ?? null,
+      registrationDeadline: insertEvent.registrationDeadline ?? null,
+      createdBy: insertEvent.createdBy ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.events.set(id, event);
+    return event;
+  }
+
+  async updateEvent(id: string, updateData: Partial<InsertEvent>): Promise<Event | undefined> {
+    const event = this.events.get(id);
+    if (!event) return undefined;
+    
+    const updatedEvent: Event = { 
+      ...event, 
+      ...updateData, 
+      updatedAt: new Date() 
+    };
+    this.events.set(id, updatedEvent);
+    return updatedEvent;
+  }
+
+  async deleteEvent(id: string): Promise<boolean> {
+    // Also delete related registrations
+    const registrations = Array.from(this.eventRegistrations.entries())
+      .filter(([_, reg]) => reg.eventId === id);
+    
+    registrations.forEach(([regId, _]) => {
+      this.eventRegistrations.delete(regId);
+    });
+
+    return this.events.delete(id);
+  }
+
+  // Event Registration methods
+  async registerForEvent(registration: InsertEventRegistration): Promise<EventRegistration> {
+    const id = randomUUID();
+    const eventRegistration: EventRegistration = {
+      id,
+      eventId: registration.eventId,
+      personId: registration.personId,
+      registrationStatus: registration.registrationStatus ?? "registered",
+      notes: registration.notes ?? null,
+      registeredAt: new Date(),
+    };
+    this.eventRegistrations.set(id, eventRegistration);
+    return eventRegistration;
+  }
+
+  async getEventRegistrations(eventId: string): Promise<EventRegistration[]> {
+    return Array.from(this.eventRegistrations.values())
+      .filter(reg => reg.eventId === eventId);
+  }
+
+  async updateRegistrationStatus(id: string, status: string): Promise<EventRegistration | undefined> {
+    const registration = this.eventRegistrations.get(id);
+    if (!registration) return undefined;
+    
+    const updated: EventRegistration = { 
+      ...registration, 
+      registrationStatus: status 
+    };
+    this.eventRegistrations.set(id, updated);
+    return updated;
+  }
+
+  // Event Stats
+  async getEventStats(): Promise<{ upcoming: number; totalRegistered: number; totalAttended: number }> {
+    const now = new Date();
+    const events = Array.from(this.events.values());
+    const registrations = Array.from(this.eventRegistrations.values());
+
+    const upcoming = events.filter(event => 
+      event.startDate > now && event.status === "scheduled"
+    ).length;
+
+    const totalRegistered = registrations.length;
+    const totalAttended = registrations.filter(reg => 
+      reg.registrationStatus === "attended"
+    ).length;
+
+    return { upcoming, totalRegistered, totalAttended };
   }
 }
 
