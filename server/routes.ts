@@ -56,6 +56,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/people/check-duplicates", async (req, res) => {
+    try {
+      const { email, phone } = req.body;
+      const result = await storage.checkDuplicates(email, phone);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check duplicates" });
+    }
+  });
+
   app.patch("/api/people/:id", async (req, res) => {
     try {
       const validatedData = insertPersonSchema.partial().parse(req.body);

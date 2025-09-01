@@ -15,6 +15,9 @@ export interface IStorage {
   createPerson(person: InsertPerson): Promise<Person>;
   updatePerson(id: string, person: Partial<InsertPerson>): Promise<Person | undefined>;
   deletePerson(id: string): Promise<boolean>;
+  
+  // Duplicate checking
+  checkDuplicates(email?: string, phone?: string): Promise<{ emailExists: boolean; phoneExists: boolean }>;
 }
 
 export class MemStorage implements IStorage {
@@ -34,6 +37,8 @@ export class MemStorage implements IStorage {
       {
         id: randomUUID(),
         name: "John Smith",
+        firstName: "John",
+        lastName: "Smith", 
         email: "john.smith@email.com",
         phone: "(555) 123-4567",
         location: "Downtown",
@@ -44,6 +49,8 @@ export class MemStorage implements IStorage {
       {
         id: randomUUID(),
         name: "Maria Garcia",
+        firstName: "Maria",
+        lastName: "Garcia",
         email: "maria.garcia@email.com",
         phone: "(555) 234-5678",
         location: "Westside",
@@ -54,6 +61,8 @@ export class MemStorage implements IStorage {
       {
         id: randomUUID(),
         name: "David Johnson",
+        firstName: "David",
+        lastName: "Johnson",
         email: "david.johnson@email.com",
         phone: "(555) 345-6789",
         location: "Eastside",
@@ -64,6 +73,8 @@ export class MemStorage implements IStorage {
       {
         id: randomUUID(),
         name: "Sarah Williams",
+        firstName: "Sarah",
+        lastName: "Williams",
         email: "sarah.williams@email.com",
         phone: "(555) 456-7890",
         location: "Northside",
@@ -74,6 +85,8 @@ export class MemStorage implements IStorage {
       {
         id: randomUUID(),
         name: "Michael Brown",
+        firstName: "Michael",
+        lastName: "Brown",
         email: "michael.brown@email.com",
         phone: "(555) 567-8901",
         location: "Downtown",
@@ -158,6 +171,15 @@ export class MemStorage implements IStorage {
     };
     this.people.set(id, person);
     return person;
+  }
+
+  async checkDuplicates(email?: string, phone?: string): Promise<{ emailExists: boolean; phoneExists: boolean }> {
+    const people = Array.from(this.people.values());
+    
+    const emailExists = email ? people.some(person => person.email === email) : false;
+    const phoneExists = phone ? people.some(person => person.phone === phone) : false;
+    
+    return { emailExists, phoneExists };
   }
 
   async updatePerson(id: string, updateData: Partial<InsertPerson>): Promise<Person | undefined> {

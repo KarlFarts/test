@@ -11,7 +11,8 @@ import {
   UserCircle,
   Phone,
   Mail,
-  MapPin
+  MapPin,
+  Plus
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CreatePersonForm } from "@/components/CreatePersonForm";
 import type { Person } from "@shared/schema";
 
 interface PeopleResponse {
@@ -79,6 +81,7 @@ export default function People() {
   const [volunteerLevelFilter, setVolunteerLevelFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [, setLocation] = useLocation();
   
   const limit = 10;
@@ -126,8 +129,12 @@ export default function People() {
           <CardTitle className="flex items-center justify-between">
             <span>Contact Database</span>
             <div className="flex items-center space-x-2">
-              <Button size="sm" data-testid="button-add-person">
-                <UserCircle className="w-4 h-4 mr-2" />
+              <Button 
+                size="sm" 
+                onClick={() => setIsCreateFormOpen(true)}
+                data-testid="button-add-person"
+              >
+                <Plus className="w-4 h-4 mr-2" />
                 Add Person
               </Button>
             </div>
@@ -391,6 +398,12 @@ export default function People() {
           )}
         </CardContent>
       </Card>
+
+      {/* Create Person Form */}
+      <CreatePersonForm 
+        open={isCreateFormOpen}
+        onOpenChange={setIsCreateFormOpen}
+      />
     </div>
   );
 }
