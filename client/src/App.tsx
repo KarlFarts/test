@@ -12,6 +12,7 @@ import VolunteerHub from "@/pages/VolunteerHub";
 import Tasks from "@/pages/Tasks";
 import Events from "@/pages/Events";
 import People from "@/pages/People";
+import PersonDetail from "@/pages/PersonDetail";
 import Templates from "@/pages/Templates";
 import NotFound from "@/pages/not-found";
 
@@ -28,6 +29,7 @@ function Router() {
         <Route path="/tasks" component={Tasks} />
         <Route path="/events" component={Events} />
         <Route path="/people" component={People} />
+        <Route path="/people/:id" component={PersonDetail} />
         <Route path="/templates" component={Templates} />
         <Route component={NotFound} />
       </Switch>

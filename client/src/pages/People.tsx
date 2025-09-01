@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { useLocation } from "wouter";
 import { 
   Search, 
   Filter, 
@@ -78,7 +79,7 @@ export default function People() {
   const [volunteerLevelFilter, setVolunteerLevelFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const [, setLocation] = useLocation();
   
   const limit = 10;
 
@@ -102,7 +103,7 @@ export default function People() {
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
 
   const handleRowClick = (person: Person) => {
-    setSelectedPerson(person);
+    setLocation(`/people/${person.id}`);
   };
 
   const clearFilters = () => {
