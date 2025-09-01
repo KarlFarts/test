@@ -231,7 +231,7 @@ export default function Events() {
     queryFn: async () => {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
+        if (value && value !== "all") params.append(key, value);
       });
       params.append("limit", "50"); // Show more events
 
@@ -311,7 +311,7 @@ export default function Events() {
                 <SelectValue placeholder="Event Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Types</SelectItem>
+                <SelectItem value="all">All Types</SelectItem>
                 {EVENT_TYPES.map(type => (
                   <SelectItem key={type.value} value={type.value}>
                     {type.label}
@@ -329,7 +329,7 @@ export default function Events() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
                 {EVENT_STATUSES.map(status => (
                   <SelectItem key={status.value} value={status.value}>
                     {status.label}
