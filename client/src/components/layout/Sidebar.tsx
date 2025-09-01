@@ -125,10 +125,10 @@ export default function Sidebar() {
                   
                   return (
                     <li key={item.href}>
-                      <Link href={item.href}>
-                        <a
+                      <Link href={item.href} asChild>
+                        <button
                           className={cn(
-                            "menu-item flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium",
+                            "menu-item flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium w-full text-left",
                             active && "active"
                           )}
                           onClick={closeMobile}
@@ -148,7 +148,7 @@ export default function Sidebar() {
                               )}
                             </>
                           )}
-                        </a>
+                        </button>
                       </Link>
                     </li>
                   );
