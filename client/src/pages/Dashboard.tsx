@@ -9,21 +9,19 @@ import {
   PlusCircle,
   UserPlus,
   FileText,
-  ChevronRight,
   Clock,
   AlertCircle,
   CalendarDays,
   Activity,
   TrendingUp,
-  Target,
-  CheckCircle
+  
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { CreatePersonForm } from "@/components/CreatePersonForm";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import type { TaskWithAssignee, EventWithStats } from "@shared/schema";
 
@@ -399,109 +397,118 @@ function MyTasks() {
   );
 }
 
-function QuickActions() {
-  const [, setLocation] = useLocation();
-  const [showCreatePerson, setShowCreatePerson] = useState(false);
-
-  const handleCreateEvent = () => {
-    setLocation("/events");
-  };
-
-  const handleCreateTask = () => {
-    setLocation("/tasks");
-  };
-
-  return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5" />
-            Quick Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <Button 
-              variant="outline"
-              className="w-full justify-between h-auto p-4"
-              onClick={handleCreateTask}
-              data-testid="button-create-task"
-            >
-              <div className="flex items-center space-x-3">
-                <CheckSquare className="w-5 h-5 text-blue-600" />
-                <span className="font-medium">Create Task</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </Button>
-
-            <Button 
-              variant="outline"
-              className="w-full justify-between h-auto p-4"
-              onClick={handleCreateEvent}
-              data-testid="button-create-event"
-            >
-              <div className="flex items-center space-x-3">
-                <PlusCircle className="w-5 h-5 text-green-600" />
-                <span className="font-medium">Create Event</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </Button>
-
-            <Button 
-              variant="outline"
-              className="w-full justify-between h-auto p-4"
-              onClick={() => setShowCreatePerson(true)}
-              data-testid="button-add-person"
-            >
-              <div className="flex items-center space-x-3">
-                <UserPlus className="w-5 h-5 text-purple-600" />
-                <span className="font-medium">Add Person</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <CreatePersonForm 
-        open={showCreatePerson} 
-        onOpenChange={setShowCreatePerson} 
-      />
-    </>
-  );
-}
+ 
 
 export default function Dashboard() {
+  const [, setLocation] = useLocation();
+  const [showCreatePerson, setShowCreatePerson] = useState(false);
+  const [view, setView] = useState<"manager" | "action" | "other">("manager");
+
+  const handleCreateEvent = () => setLocation("/events");
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Command Center</h1>
-        <p className="text-muted-foreground">Your campaign dashboard with real-time insights and quick actions.</p>
-      </div>
-
-      {/* Daily Snapshot Stats */}
-      <DailySnapshotStats />
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column */}
-        <div className="space-y-6">
-          <MyFeed />
-          <QuickActions />
+      {/* Header Row with Welcome + Quick Actions */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Welcome back</h1>
+          <p className="text-muted-foreground">Your Command Center for quick actions and oversight.</p>
         </div>
-
-        {/* Middle Column */}
-        <div className="space-y-6">
-          <MyEvents />
-        </div>
-
-        {/* Right Column */}
-        <div className="space-y-6">
-          <MyTasks />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => setShowCreatePerson(true)}
+            data-testid="button-add-volunteer"
+          >
+            <UserPlus className="w-4 h-4 mr-2" /> Add Volunteer
+          </Button>
+          <Button
+            onClick={handleCreateEvent}
+            data-testid="button-create-event"
+          >
+            <PlusCircle className="w-4 h-4 mr-2" /> Create Event
+          </Button>
         </div>
       </div>
+
+      {/* View Switcher */}
+      <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
+        <TabsList>
+          <TabsTrigger value="manager">Manager View</TabsTrigger>
+          <TabsTrigger value="action">Action View</TabsTrigger>
+          <TabsTrigger value="other">Other</TabsTrigger>
+        </TabsList>
+
+        {/* Manager View: overview + varied-size widgets */}
+        <TabsContent value="manager" className="mt-4">
+          <DailySnapshotStats />
+          <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
+            <div className="lg:col-span-4 space-y-6">
+              <MyFeed />
+            </div>
+            <div className="lg:col-span-2 space-y-6">
+              <MyTasks />
+            </div>
+            <div className="lg:col-span-3 space-y-6">
+              <MyEvents />
+            </div>
+            <div className="lg:col-span-3">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" /> Reports Snapshot
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">Coming soon: KPI charts, fundraising, outreach metrics.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Action View: tasks-focused layout */}
+        <TabsContent value="action" className="mt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="lg:col-span-3 space-y-6">
+              <MyTasks />
+              <MyFeed />
+            </div>
+            <div className="lg:col-span-2 space-y-6">
+              <MyEvents />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Other View: placeholder customizable area */}
+        <TabsContent value="other" className="mt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Custom Widget A</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">Add any widget here.</p>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="lg:col-span-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Custom Widget B (Wide)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">Larger card to showcase charts or maps.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Create Person/Volunteer Modal */}
+      <CreatePersonForm open={showCreatePerson} onOpenChange={setShowCreatePerson} />
     </div>
   );
 }
