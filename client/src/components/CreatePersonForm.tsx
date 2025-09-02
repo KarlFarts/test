@@ -356,6 +356,8 @@ export function CreatePersonForm({ open, onOpenChange }: CreatePersonFormProps) 
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="flagged">Flagged</SelectItem>
                         <SelectItem value="inactive">Inactive</SelectItem>
                       </SelectContent>
                     </Select>

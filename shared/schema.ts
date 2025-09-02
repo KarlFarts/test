@@ -17,9 +17,13 @@ export const people = pgTable("people", {
   email: text("email"),
   phone: text("phone"),
   location: text("location"),
-  status: text("status").notNull().default("active"),
+  status: text("status").notNull().default("active"), // active, pending, flagged, inactive
   volunteerLevel: text("volunteer_level").notNull().default("new"),
   lastContact: timestamp("last_contact"),
+  petitionGoal: varchar("petition_goal").default("0"),
+  petitionCollected: varchar("petition_collected").default("0"),
+  taskCompletionRate: varchar("task_completion_rate").default("0"),
+  dataValidationState: text("data_validation_state").default("valid"), // valid, warning, error
 });
 
 export const events = pgTable("events", {
@@ -97,7 +101,7 @@ export const createPersonSchema = z.object({
   email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
   phone: z.string().regex(phoneRegex, "Please enter a valid phone number (e.g., 555-123-4567)").optional().or(z.literal("")),
   location: z.string().optional(),
-  status: z.enum(["active", "inactive"]).default("active"),
+  status: z.enum(["active", "pending", "flagged", "inactive"]).default("active"),
   volunteerLevel: z.enum(["new", "regular", "core"]).default("new"),
 }).refine(
   (data) => data.email || data.phone,
