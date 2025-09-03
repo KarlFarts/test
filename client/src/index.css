@@ -129,4 +129,149 @@
       background-color: rgba(0, 0, 0, 0.5);
     }
   }
+
+  /* Glassmorphism Design System */
+  .glass-card {
+    @apply backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 border border-white/20 dark:border-gray-700/30;
+    @apply shadow-glass shadow-glass-inset rounded-2xl;
+  }
+
+  .glass-card-subtle {
+    @apply backdrop-blur-lg bg-white/50 dark:bg-gray-900/50 border border-white/10 dark:border-gray-700/20;
+    @apply shadow-elevation-1 rounded-xl;
+  }
+
+  .glass-surface {
+    @apply backdrop-blur-2xl bg-white/80 dark:bg-gray-900/80 border border-white/30 dark:border-gray-700/40;
+    @apply shadow-elevation-2 rounded-3xl;
+  }
+
+  .floating-card {
+    @apply glass-card hover:shadow-elevation-3 hover:-translate-y-1;
+    @apply transition-all duration-300 ease-spring;
+  }
+
+  .floating-card-enhanced {
+    @apply backdrop-blur-xl bg-white/60 dark:bg-gray-900/60 border border-white/30 dark:border-gray-700/40;
+    @apply rounded-2xl transition-all duration-300 ease-spring;
+    @apply hover:-translate-y-2 hover:scale-[1.02];
+    box-shadow: 
+      0 8px 32px 0 rgba(31, 38, 135, 0.37),
+      0 20px 40px -12px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .floating-card-enhanced:hover {
+    box-shadow: 
+      0 12px 48px 0 rgba(31, 38, 135, 0.5),
+      0 32px 64px -12px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .floating-card-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .gradient-bg-primary {
+    background: linear-gradient(135deg, 
+      rgba(147, 197, 253, 0.1) 0%, 
+      rgba(196, 181, 253, 0.1) 50%, 
+      rgba(252, 211, 77, 0.1) 100%);
+  }
+
+  .gradient-bg-secondary {
+    background: linear-gradient(135deg, 
+      rgba(236, 254, 255, 0.8) 0%, 
+      rgba(245, 243, 255, 0.8) 50%, 
+      rgba(254, 249, 195, 0.8) 100%);
+  }
+
+  .gradient-bg-hero {
+    background: linear-gradient(135deg, 
+      rgba(255, 255, 255, 0.95) 0%, 
+      rgba(248, 250, 252, 0.95) 25%,
+      rgba(241, 245, 249, 0.95) 50%,
+      rgba(248, 250, 252, 0.95) 75%,
+      rgba(255, 255, 255, 0.95) 100%);
+  }
+
+  .dark .gradient-bg-hero {
+    background: linear-gradient(135deg, 
+      rgba(15, 23, 42, 0.95) 0%, 
+      rgba(30, 41, 59, 0.95) 25%,
+      rgba(51, 65, 85, 0.95) 50%,
+      rgba(30, 41, 59, 0.95) 75%,
+      rgba(15, 23, 42, 0.95) 100%);
+  }
+
+  .btn-glass {
+    @apply glass-card-subtle hover:glass-card px-6 py-3 font-medium;
+    @apply hover:scale-105 active:scale-95 transition-all duration-200;
+    @apply text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white;
+  }
+
+  .btn-glass-primary {
+    @apply backdrop-blur-xl bg-blue-500/80 hover:bg-blue-600/90 border border-blue-400/30;
+    @apply text-white shadow-elevation-2 hover:shadow-elevation-3;
+    @apply px-6 py-3 rounded-xl font-medium transition-all duration-200;
+    @apply hover:scale-105 active:scale-95;
+  }
+
+  .text-hierarchy-1 {
+    @apply text-4xl md:text-5xl lg:text-6xl font-light tracking-tight;
+    @apply text-gray-900 dark:text-gray-100;
+  }
+
+  .text-hierarchy-2 {
+    @apply text-2xl md:text-3xl lg:text-4xl font-light;
+    @apply text-gray-800 dark:text-gray-200;
+  }
+
+  .text-hierarchy-3 {
+    @apply text-xl md:text-2xl font-normal;
+    @apply text-gray-700 dark:text-gray-300;
+  }
+
+  .text-body-large {
+    @apply text-lg font-normal leading-relaxed;
+    @apply text-gray-600 dark:text-gray-400;
+  }
+
+  .text-body {
+    @apply text-base font-normal leading-relaxed;
+    @apply text-gray-600 dark:text-gray-400;
+  }
+
+  .text-caption {
+    @apply text-sm font-medium;
+    @apply text-gray-500 dark:text-gray-500;
+  }
+
+  .icon-glass {
+    @apply p-3 rounded-xl backdrop-blur-lg bg-white/60 dark:bg-gray-800/60;
+    @apply border border-white/20 dark:border-gray-700/30 shadow-elevation-1;
+  }
+
+  .badge-glass {
+    @apply px-3 py-1 rounded-full backdrop-blur-lg bg-white/70 dark:bg-gray-800/70;
+    @apply border border-white/30 dark:border-gray-700/40 text-xs font-medium;
+    @apply text-gray-700 dark:text-gray-300;
+  }
+
+  .section-spacing {
+    @apply py-16 md:py-24 lg:py-32;
+  }
+
+  .container-glass {
+    @apply max-w-7xl mx-auto px-6 lg:px-8;
+  }
 }
