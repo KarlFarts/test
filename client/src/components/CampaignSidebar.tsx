@@ -96,6 +96,8 @@ const CampaignSidebar: React.FC<CampaignSidebarProps> = ({
         { id: 'media-contacts', label: 'Media Contacts', path: '/media', icon: <Camera size={16} /> },
         { id: 'vip-database', label: 'VIP Database', path: '/vip', icon: <Database size={16} /> },
         { id: 'volunteer-hub', label: 'Volunteer Hub', path: '/volunteer-hub', icon: <UserCheck size={16} /> },
+        { id: 'volunteer-pipeline', label: 'Volunteer Pipeline', path: '/volunteer-pipeline', icon: <Users size={16} /> },
+        { id: 'volunteer-assignments', label: 'Volunteer Assignments', path: '/volunteer-assignments', icon: <Calendar size={16} /> },
         { id: 'contact-log', label: 'Master Contact Log', path: '/contacts', icon: <MessageSquare size={16} /> },
         { id: 'relationship-search', label: 'Search', path: '/search', icon: <SearchIcon size={16} /> }
       ]

@@ -11,6 +11,8 @@ import MyTasks from "@/pages/MyTasks";
 import MyEvents from "@/pages/MyEvents";
 import BallotAccess from "@/pages/BallotAccess";
 import VolunteerHub from "@/pages/VolunteerHub";
+import VolunteerPipeline from "@/pages/VolunteerPipeline";
+import VolunteerAssignments from "@/pages/VolunteerAssignments";
 import Tasks from "@/pages/Tasks";
 import Events from "@/pages/Events";
 import People from "@/pages/People";
@@ -30,6 +32,8 @@ function Router() {
         <Route path="/my-events" component={MyEvents} />
         <Route path="/ballot-access" component={BallotAccess} />
         <Route path="/volunteer-hub" component={VolunteerHub} />
+        <Route path="/volunteer-pipeline" component={VolunteerPipeline} />
+        <Route path="/volunteer-assignments" component={VolunteerAssignments} />
         <Route path="/tasks" component={Tasks} />
         <Route path="/events" component={Events} />
         <Route path="/people" component={People} />
