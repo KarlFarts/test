@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -48,6 +48,7 @@ import {
   fadeInUp, 
   cardHover 
 } from "@/lib/animations";
+import { useDebounce } from "@/hooks/useDebounce";
 import type { Person } from "@shared/schema";
 
 interface PeopleResponse {
@@ -129,15 +130,19 @@ export default function EnhancedPeoplePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [allSelected, setAllSelected] = useState(false);
   const [, setLocation] = useLocation();
+  
+  // Debounce search to reduce API calls
+  const debouncedSearch = useDebounce(search, 300);
   
   const limit = 10;
 
   const { data, isLoading, error } = useQuery<PeopleResponse>({
-    queryKey: ["/api/people", { search, statusFilter, volunteerLevelFilter, locationFilter, page: currentPage, limit }],
+    queryKey: ["/api/people", debouncedSearch, statusFilter, volunteerLevelFilter, locationFilter, currentPage, limit],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (search) params.append("search", search);
+      if (debouncedSearch) params.append("search", debouncedSearch);
       if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
       if (volunteerLevelFilter && volunteerLevelFilter !== "all") params.append("volunteerLevel", volunteerLevelFilter);
       if (locationFilter && locationFilter !== "all") params.append("location", locationFilter);
@@ -147,39 +152,41 @@ export default function EnhancedPeoplePage() {
       const response = await fetch(`/api/people?${params}`);
       if (!response.ok) throw new Error("Failed to fetch people");
       const result = await response.json();
-      // Enhance data with dummy metrics for demo
-      return {
-        ...result,
-        people: generateDummyData(result.people)
-      };
+      return result;
     },
+    select: (data) => ({
+      ...data,
+      people: generateDummyData(data.people)
+    }),
   });
 
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
 
-  const handleRowClick = (person: EnhancedPerson) => {
+  const handleRowClick = useCallback((person: EnhancedPerson) => {
     setLocation(`/people/${person.id}`);
-  };
+  }, [setLocation]);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearch("");
     setStatusFilter("all");
     setVolunteerLevelFilter("all");
     setLocationFilter("all");
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (data?.people) {
       setSelectedIds(new Set(data.people.map(p => p.id)));
+      setAllSelected(true);
     }
-  };
+  }, [data?.people]);
 
-  const handleDeselectAll = () => {
+  const handleDeselectAll = useCallback(() => {
     setSelectedIds(new Set());
-  };
+    setAllSelected(false);
+  }, []);
 
-  const handlePersonSelect = (personId: string, selected: boolean) => {
+  const handlePersonSelect = useCallback((personId: string, selected: boolean) => {
     const newSelected = new Set(selectedIds);
     if (selected) {
       newSelected.add(personId);
@@ -187,7 +194,27 @@ export default function EnhancedPeoplePage() {
       newSelected.delete(personId);
     }
     setSelectedIds(newSelected);
-  };
+    
+    // Update allSelected state efficiently
+    if (data?.people) {
+      const totalCount = data.people.length;
+      const selectedCount = selected ? newSelected.size : newSelected.size;
+      setAllSelected(selectedCount === totalCount && totalCount > 0);
+    }
+  }, [selectedIds, data?.people]);
+
+  // Memoized pagination handlers
+  const handlePreviousPage = useCallback(() => {
+    setCurrentPage(prev => Math.max(1, prev - 1));
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setCurrentPage(prev => Math.min(totalPages, prev + 1));
+  }, [totalPages]);
+
+  const handlePageClick = useCallback((pageNum: number) => {
+    setCurrentPage(pageNum);
+  }, []);
 
   return (
     <motion.div
@@ -395,7 +422,7 @@ export default function EnhancedPeoplePage() {
                             <TableHead className="w-8">
                               <input
                                 type="checkbox"
-                                checked={selectedIds.size === data.people.length && data.people.length > 0}
+                                checked={allSelected}
                                 onChange={(e) => e.target.checked ? handleSelectAll() : handleDeselectAll()}
                                 className="rounded border-gray-300"
                               />
@@ -419,10 +446,12 @@ export default function EnhancedPeoplePage() {
                               </TableRow>
                             ) : (
                               data.people.map((person, index) => {
-                                const petitionProgress = person.petitionGoal && person.petitionCollected 
-                                  ? Math.round((parseInt(person.petitionCollected) / parseInt(person.petitionGoal)) * 100)
-                                  : 0;
+                                // Memoize calculations to avoid repeated parsing
+                                const petitionGoal = person.petitionGoal ? parseInt(person.petitionGoal) : 0;
+                                const petitionCollected = person.petitionCollected ? parseInt(person.petitionCollected) : 0;
+                                const petitionProgress = petitionGoal > 0 ? Math.round((petitionCollected / petitionGoal) * 100) : 0;
                                 const taskProgress = person.taskCompletionRate ? parseInt(person.taskCompletionRate) : 0;
+                                const formattedLastContact = person.lastContact ? format(new Date(person.lastContact), "MMM d, yyyy") : "Never";
                                 
                                 const expandedContent = (
                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -458,7 +487,7 @@ export default function EnhancedPeoplePage() {
                                         <div>
                                           <div className="flex justify-between text-sm mb-1">
                                             <span>Petition Collection</span>
-                                            <span>{person.petitionCollected || 0}/{person.petitionGoal || 0}</span>
+                                            <span>{petitionCollected}/{petitionGoal}</span>
                                           </div>
                                           <Progress value={petitionProgress} className="h-2" />
                                         </div>
@@ -487,7 +516,7 @@ export default function EnhancedPeoplePage() {
                                         <div className="flex items-center justify-between">
                                           <span className="text-sm">Last Contact</span>
                                           <span className="text-sm text-muted-foreground">
-                                            {person.lastContact ? format(new Date(person.lastContact), "MMM d, yyyy") : "Never"}
+                                            {formattedLastContact}
                                           </span>
                                         </div>
                                       </div>
@@ -687,7 +716,7 @@ export default function EnhancedPeoplePage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          onClick={handlePreviousPage}
                           disabled={currentPage === 1}
                           className="bg-white/50 dark:bg-black/50 backdrop-blur-sm"
                           data-testid="button-previous-page"
@@ -704,7 +733,7 @@ export default function EnhancedPeoplePage() {
                                 key={pageNum}
                                 variant={currentPage === pageNum ? "default" : "outline"}
                                 size="sm"
-                                onClick={() => setCurrentPage(pageNum)}
+                                onClick={() => handlePageClick(pageNum)}
                                 className={currentPage === pageNum ? "" : "bg-background border-border"}
                                 data-testid={`button-page-${pageNum}`}
                               >
@@ -717,7 +746,7 @@ export default function EnhancedPeoplePage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          onClick={handleNextPage}
                           disabled={currentPage === totalPages}
                           className="bg-white/50 dark:bg-black/50 backdrop-blur-sm"
                           data-testid="button-next-page"

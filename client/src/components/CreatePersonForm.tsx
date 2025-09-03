@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ import { GlassModal } from "@/components/ui/glass-panel";
 import { GradientButton, PrimaryButton } from "@/components/ui/gradient-button";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { modalContent, fadeInUp, staggerContainer, staggerItem } from "@/lib/animations";
+import { useDebounce } from "@/hooks/useDebounce";
 import { 
   Form, 
   FormControl, 
@@ -40,6 +41,15 @@ interface DuplicateCheckResponse {
   phoneExists: boolean;
 }
 
+// Simple debounce utility
+function debounce<T extends (...args: any[]) => void>(func: T, delay: number): T {
+  let timeoutId: NodeJS.Timeout;
+  return ((...args: any[]) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func(...args), delay);
+  }) as T;
+}
+
 // Phone number formatting helper
 const formatPhoneNumber = (value: string) => {
   const phoneNumber = value.replace(/[^\d]/g, '');
@@ -57,6 +67,7 @@ export function CreatePersonForm({ open, onOpenChange }: CreatePersonFormProps) 
   const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const duplicateCheckRef = useRef<AbortController | null>(null);
 
   const form = useForm<CreatePerson>({
     resolver: zodResolver(createPersonSchema),
@@ -106,18 +117,27 @@ export function CreatePersonForm({ open, onOpenChange }: CreatePersonFormProps) 
     },
   });
 
-  const checkDuplicates = async (email?: string, phone?: string) => {
+  const checkDuplicates = useCallback(async (email?: string, phone?: string) => {
     if (!email && !phone) {
       setDuplicateWarnings({ emailExists: false, phoneExists: false });
       return;
     }
 
+    // Cancel previous request
+    if (duplicateCheckRef.current) {
+      duplicateCheckRef.current.abort();
+    }
+
+    // Create new abort controller
+    duplicateCheckRef.current = new AbortController();
+    
     setIsCheckingDuplicates(true);
     try {
       const response = await fetch("/api/people/check-duplicates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, phone }),
+        signal: duplicateCheckRef.current.signal,
       });
       
       if (response.ok) {
@@ -125,11 +145,13 @@ export function CreatePersonForm({ open, onOpenChange }: CreatePersonFormProps) 
         setDuplicateWarnings(result);
       }
     } catch (error) {
-      console.error("Failed to check duplicates:", error);
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error("Failed to check duplicates:", error);
+      }
     } finally {
       setIsCheckingDuplicates(false);
     }
-  };
+  }, []);
 
   const onSubmit = async (data: CreatePerson) => {
     // Final duplicate check before submission
@@ -143,22 +165,30 @@ export function CreatePersonForm({ open, onOpenChange }: CreatePersonFormProps) 
     createPersonMutation.mutate(data);
   };
 
+  // Debounced duplicate check
+  const debouncedCheckDuplicates = useCallback(
+    debounce((email?: string, phone?: string) => {
+      checkDuplicates(email, phone);
+    }, 500),
+    [checkDuplicates]
+  );
+
   // Handle phone number formatting
-  const handlePhoneChange = (value: string, onChange: (value: string) => void) => {
+  const handlePhoneChange = useCallback((value: string, onChange: (value: string) => void) => {
     const formatted = formatPhoneNumber(value);
     onChange(formatted);
     
-    // Check duplicates on valid phone numbers
+    // Check duplicates on valid phone numbers with debouncing
     if (formatted.replace(/[^\d]/g, '').length === 10) {
-      checkDuplicates(form.getValues("email"), formatted);
+      debouncedCheckDuplicates(form.getValues("email"), formatted);
     }
-  };
+  }, [form, debouncedCheckDuplicates]);
 
-  const handleEmailBlur = (email: string) => {
+  const handleEmailBlur = useCallback((email: string) => {
     if (email && email.includes("@")) {
       checkDuplicates(email, form.getValues("phone"));
     }
-  };
+  }, [form, checkDuplicates]);
 
   const hasWarnings = duplicateWarnings.emailExists || duplicateWarnings.phoneExists;
 

@@ -6,6 +6,7 @@ import { BreadcrumbsProvider } from "@/hooks/useBreadcrumbs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useCommandPalette } from "@/components/ui/command-palette";
 import AppLayout from "@/components/layout/AppLayout";
+import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import MyTasks from "@/pages/MyTasks";
 import MyEvents from "@/pages/MyEvents";
@@ -24,25 +25,90 @@ function Router() {
   const { CommandPalette } = useCommandPalette();
   
   return (
-    <AppLayout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/my-tasks" component={MyTasks} />
-        <Route path="/my-events" component={MyEvents} />
-        <Route path="/ballot-access" component={BallotAccess} />
-        <Route path="/volunteer-hub" component={VolunteerHub} />
-        <Route path="/volunteer-pipeline" component={VolunteerPipeline} />
-        <Route path="/volunteer-assignments" component={VolunteerAssignments} />
-        <Route path="/tasks" component={Tasks} />
-        <Route path="/events" component={Events} />
-        <Route path="/people" component={People} />
-        <Route path="/people/:id" component={PersonDetail} />
-        <Route path="/templates" component={Templates} />
-        <Route component={NotFound} />
-      </Switch>
-      <CommandPalette />
-    </AppLayout>
+    <Switch>
+      {/* Landing page without AppLayout (no sidebar/header) */}
+      <Route path="/" component={Landing} />
+      
+      {/* All other routes with AppLayout (includes sidebar/header) */}
+      <Route path="/dashboard">
+        <AppLayout>
+          <Dashboard />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+      <Route path="/my-tasks">
+        <AppLayout>
+          <MyTasks />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+      <Route path="/my-events">
+        <AppLayout>
+          <MyEvents />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+      <Route path="/ballot-access">
+        <AppLayout>
+          <BallotAccess />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+      <Route path="/volunteer-hub">
+        <AppLayout>
+          <VolunteerHub />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+      <Route path="/volunteer-pipeline">
+        <AppLayout>
+          <VolunteerPipeline />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+      <Route path="/volunteer-assignments">
+        <AppLayout>
+          <VolunteerAssignments />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+      <Route path="/tasks">
+        <AppLayout>
+          <Tasks />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+      <Route path="/events">
+        <AppLayout>
+          <Events />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+      <Route path="/people">
+        <AppLayout>
+          <People />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+      <Route path="/people/:id">
+        <AppLayout>
+          <PersonDetail />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+      <Route path="/templates">
+        <AppLayout>
+          <Templates />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+      <Route>
+        <AppLayout>
+          <NotFound />
+          <CommandPalette />
+        </AppLayout>
+      </Route>
+    </Switch>
   );
 }
 
