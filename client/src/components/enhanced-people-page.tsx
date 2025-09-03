@@ -1,55 +1,74 @@
-import { useState, useCallback, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import React, { useState, useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
-import { 
-  Search, 
-  Filter, 
-  ChevronLeft, 
-  ChevronRight, 
-  ChevronDown, 
-  MoreHorizontal,
-  UserCircle,
+import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
+import { useDebounce } from "@/hooks/useDebounce";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Filter,
+  Calendar,
+  MapPin,
   Phone,
   Mail,
-  MapPin,
+  User,
+  Users,
+  MoreHorizontal,
+  CheckSquare,
+  Clock,
+  AlertTriangle,
   Plus,
   Edit,
   Trash2,
-  Eye,
+  Home,
+  UserCircle,
   Zap,
-  Calendar,
-  CheckSquare,
-  Home
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { TrafficLightIndicator } from "@/components/ui/traffic-light-indicator";
-import { FloatingActionButton } from "@/components/ui/floating-action-button";
-import { ExpandableRow } from "@/components/ui/expandable-row";
-import { HoverPreview } from "@/components/ui/hover-preview";
-import { PersonContextMenu, TableContextMenu } from "@/components/ui/enhanced-context-menu";
-import { PrimaryButton } from "@/components/ui/gradient-button";
-import { TableSkeleton } from "@/components/ui/loading-skeleton";
-import { CreatePersonForm } from "@/components/CreatePersonForm";
-import { 
-  pageTransition, 
-  staggerContainer, 
-  staggerItem, 
-  fadeInUp, 
-  cardHover 
-} from "@/lib/animations";
-import { useDebounce } from "@/hooks/useDebounce";
-import type { Person } from "@shared/schema";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Person } from "@shared/schema";
+import { CreatePersonForm } from "./CreatePersonForm";
 
 interface PeopleResponse {
   people: EnhancedPerson[];
@@ -60,148 +79,169 @@ interface EnhancedPerson extends Omit<Person, 'petitionGoal' | 'petitionCollecte
   petitionGoal: string | null;
   petitionCollected: string | null;
   taskCompletionRate: string | null;
-  dataValidationState: "valid" | "warning" | "error" | null;
+  dataValidationState: "valid" | "warning" | "error";
   taskCount: number;
   eventCount: number;
+  status: "active" | "pending" | "flagged" | "inactive";
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  createdAt?: string;
+  address?: string | null;
 }
 
-const statusOptions = [
-  { value: "all", label: "All Statuses" },
-  { value: "active", label: "Active" },
-  { value: "pending", label: "Pending" },
-  { value: "flagged", label: "Flagged" },
-  { value: "inactive", label: "Inactive" },
-];
+// Seeded random number generator for consistent dummy data
+function seededRandom(seed: number): () => number {
+  return function() {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+}
 
-// Dummy data for enhanced features
+// Dummy data generator function
 const generateDummyData = (people: Person[]): EnhancedPerson[] => {
-  return people.map(person => ({
-    ...person,
-    petitionGoal: Math.floor(Math.random() * 100 + 50).toString(),
-    petitionCollected: Math.floor(Math.random() * 80).toString(),
-    taskCompletionRate: Math.floor(Math.random() * 100).toString(),
-    dataValidationState: ["valid", "warning", "error"][Math.floor(Math.random() * 3)] as "valid" | "warning" | "error",
-    taskCount: Math.floor(Math.random() * 15),
-    eventCount: Math.floor(Math.random() * 8),
-    status: ["active", "pending", "flagged", "inactive"][Math.floor(Math.random() * 4)] as any
-  }));
+  return people.map((person, index) => {
+    const rng = seededRandom((person.id ? parseInt(person.id.replace(/\D/g, ''), 10) || 0 : 0) + index * 1000);
+    
+    return {
+      ...person,
+      petitionGoal: Math.floor(rng() * 100 + 50).toString(),
+      petitionCollected: Math.floor(rng() * 80).toString(),
+      taskCompletionRate: Math.floor(rng() * 100).toString(),
+      dataValidationState: (["valid", "warning", "error"] as const)[Math.floor(rng() * 3)],
+      taskCount: Math.floor(rng() * 15),
+      eventCount: Math.floor(rng() * 8),
+      status: (["active", "pending", "flagged", "inactive"] as const)[Math.floor(rng() * 4)]
+    };
+  });
 };
 
-const volunteerLevelOptions = [
-  { value: "all", label: "All Levels" },
-  { value: "new", label: "New" },
-  { value: "regular", label: "Regular" },
-  { value: "core", label: "Core" },
-];
-
-const locationOptions = [
-  { value: "all", label: "All Locations" },
-  { value: "Downtown", label: "Downtown" },
-  { value: "Westside", label: "Westside" },
-  { value: "Eastside", label: "Eastside" },
-  { value: "Northside", label: "Northside" },
-];
-
-const getProgressColor = (percentage: number) => {
-  if (percentage >= 80) return "bg-green-500";
-  if (percentage >= 60) return "bg-yellow-500";
-  if (percentage >= 40) return "bg-orange-500";
-  return "bg-red-500";
+// Animation variants
+const pageTransition = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 }
 };
 
-const getVolunteerLevelColor = (level: string) => {
-  switch (level) {
-    case "core":
-      return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-    case "regular":
-      return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-    case "new":
-      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-    default:
-      return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.3 }
+};
+
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1
+    }
   }
 };
 
-export default function EnhancedPeoplePage() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [volunteerLevelFilter, setVolunteerLevelFilter] = useState("all");
-  const [locationFilter, setLocationFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [allSelected, setAllSelected] = useState(false);
-  const [, setLocation] = useLocation();
-  
-  // Debounce search to reduce API calls
-  const debouncedSearch = useDebounce(search, 300);
-  
-  const limit = 10;
+const staggerItem = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 }
+};
 
-  const { data, isLoading, error } = useQuery<PeopleResponse>({
-    queryKey: ["/api/people", debouncedSearch, statusFilter, volunteerLevelFilter, locationFilter, currentPage, limit],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (debouncedSearch) params.append("search", debouncedSearch);
-      if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
-      if (volunteerLevelFilter && volunteerLevelFilter !== "all") params.append("volunteerLevel", volunteerLevelFilter);
-      if (locationFilter && locationFilter !== "all") params.append("location", locationFilter);
-      params.append("page", currentPage.toString());
-      params.append("limit", limit.toString());
+export default function EnhancedPeoplePage() {
+  const [, setLocation] = useLocation();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [validationFilter, setValidationFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [selectedPeople, setSelectedPeople] = useState<Set<string>>(new Set());
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
+  // Debounced search to prevent excessive API calls
+  const debouncedSearch = useDebounce(search, 300);
+
+  // Stable query key using primitive values only
+  const queryKey = useMemo(() => [
+    'people',
+    debouncedSearch,
+    statusFilter,
+    validationFilter,
+    currentPage,
+    pageSize
+  ], [debouncedSearch, statusFilter, validationFilter, currentPage, pageSize]);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey,
+    queryFn: async (): Promise<PeopleResponse> => {
+      const params = new URLSearchParams({
+        search: debouncedSearch,
+        status: statusFilter === "all" ? "" : statusFilter,
+        validation: validationFilter === "all" ? "" : validationFilter,
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+      });
 
       const response = await fetch(`/api/people?${params}`);
       if (!response.ok) throw new Error("Failed to fetch people");
+      
       const result = await response.json();
       return result;
     },
-    select: (data) => ({
+    select: useCallback((data: PeopleResponse) => ({
       ...data,
       people: generateDummyData(data.people)
-    }),
+    }), [generateDummyData])
   });
 
-  const totalPages = data ? Math.ceil(data.total / limit) : 0;
+  // Memoized event handlers
+  const handleSearch = useCallback((value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  }, []);
 
-  const handleRowClick = useCallback((person: EnhancedPerson) => {
-    setLocation(`/people/${person.id}`);
-  }, [setLocation]);
+  const handleStatusFilter = useCallback((value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  }, []);
+
+  const handleValidationFilter = useCallback((value: string) => {
+    setValidationFilter(value);
+    setCurrentPage(1);
+  }, []);
+
+  const handleRowClick = useCallback((personId: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(personId)) {
+        newSet.delete(personId);
+      } else {
+        newSet.add(personId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleSelectPerson = useCallback((personId: string, checked: boolean) => {
+    setSelectedPeople(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(personId);
+      } else {
+        newSet.delete(personId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback((checked: boolean) => {
+    if (checked && data?.people) {
+      setSelectedPeople(new Set(data.people.map(p => p.id)));
+    } else {
+      setSelectedPeople(new Set());
+    }
+  }, [data?.people]);
 
   const clearFilters = useCallback(() => {
     setSearch("");
     setStatusFilter("all");
-    setVolunteerLevelFilter("all");
-    setLocationFilter("all");
+    setValidationFilter("all");
     setCurrentPage(1);
   }, []);
-
-  const handleSelectAll = useCallback(() => {
-    if (data?.people) {
-      setSelectedIds(new Set(data.people.map(p => p.id)));
-      setAllSelected(true);
-    }
-  }, [data?.people]);
-
-  const handleDeselectAll = useCallback(() => {
-    setSelectedIds(new Set());
-    setAllSelected(false);
-  }, []);
-
-  const handlePersonSelect = useCallback((personId: string, selected: boolean) => {
-    const newSelected = new Set(selectedIds);
-    if (selected) {
-      newSelected.add(personId);
-    } else {
-      newSelected.delete(personId);
-    }
-    setSelectedIds(newSelected);
-    
-    // Update allSelected state efficiently
-    if (data?.people) {
-      const totalCount = data.people.length;
-      const selectedCount = selected ? newSelected.size : newSelected.size;
-      setAllSelected(selectedCount === totalCount && totalCount > 0);
-    }
-  }, [selectedIds, data?.people]);
 
   // Memoized pagination handlers
   const handlePreviousPage = useCallback(() => {
@@ -209,154 +249,120 @@ export default function EnhancedPeoplePage() {
   }, []);
 
   const handleNextPage = useCallback(() => {
-    setCurrentPage(prev => Math.min(totalPages, prev + 1));
-  }, [totalPages]);
-
-  const handlePageClick = useCallback((pageNum: number) => {
-    setCurrentPage(pageNum);
+    setCurrentPage(prev => prev + 1);
   }, []);
 
+  const handlePageSizeChange = useCallback((value: string) => {
+    setPageSize(Number(value));
+    setCurrentPage(1);
+  }, []);
+
+  // Memoized computed values
+  const totalPages = useMemo(() => 
+    data ? Math.ceil(data.total / pageSize) : 0
+  , [data?.total, pageSize]);
+
+  const isAllSelected = useMemo(() => 
+    data?.people && data.people.length > 0 && 
+    data.people.every(p => selectedPeople.has(p.id))
+  , [data?.people, selectedPeople]);
+
+  const isIndeterminate = useMemo(() => 
+    data?.people && selectedPeople.size > 0 && selectedPeople.size < data.people.length
+  , [data?.people, selectedPeople]);
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="text-center text-red-600">
+          Error loading people: {error instanceof Error ? error.message : 'Unknown error'}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <motion.div
+    <motion.div 
+      className="container mx-auto px-6 py-8"
       variants={pageTransition}
       initial="initial"
       animate="animate"
       exit="exit"
-      className="p-6 h-full overflow-auto"
     >
-      {/* Breadcrumb Navigation */}
-      <motion.div 
-        className="mb-4"
-        variants={fadeInUp}
-        initial="initial"
-        animate="animate"
-      >
+      <motion.div variants={fadeInUp} className="mb-6">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/" className="flex items-center space-x-1">
+              <BreadcrumbLink href="/dashboard">
                 <Home className="w-4 h-4" />
-                <span>Campaign</span>
+                Dashboard
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>People</BreadcrumbPage>
+              <BreadcrumbPage>People Management</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
       </motion.div>
 
-      <motion.div 
-        className="mb-6"
-        variants={fadeInUp}
-        initial="initial"
-        animate="animate"
-        transition={{ delay: 0.1 }}
-      >
-        <h1 className="text-3xl font-bold text-foreground mb-2">People</h1>
-        <p className="text-muted-foreground">Manage your volunteer database and contact information. Track petition goals, task completion, and engagement metrics.</p>
-        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-          <p className="text-sm text-blue-700 dark:text-blue-300">
-            <strong>💡 Quick Guide:</strong> Click on any row to expand detailed information. Use the floating action buttons to quickly add people or assign tasks. Hover over badges to see additional context.
-          </p>
-        </div>
-      </motion.div>
-
-      <motion.div
-        variants={fadeInUp}
-        initial="initial"
-        animate="animate"
-        transition={{ delay: 0.1 }}
-      >
-        <Card className="border border-border bg-card">
+      <motion.div variants={fadeInUp} className="mb-8">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center space-x-2">
-                <UserCircle className="w-5 h-5" />
-                <span>Contact Database</span>
-              </span>
-              <div className="flex items-center space-x-2">
-                <PrimaryButton 
-                  size="sm" 
-                  onClick={() => setIsCreateFormOpen(true)}
-                  data-testid="button-add-person"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Person
-                </PrimaryButton>
-              </div>
+            <CardTitle className="flex items-center gap-3">
+              <UserCircle className="w-6 h-6" />
+              People Management
+              <Button 
+                onClick={() => setShowCreateForm(true)}
+                className="ml-auto"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Person
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Enhanced Search and Filters */}
             <motion.div 
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6"
+              className="grid grid-cols-1 md:grid-cols-4 gap-4"
               variants={staggerContainer}
               initial="initial"
               animate="animate"
             >
-              <motion.div className="relative" variants={staggerItem}>
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <motion.div variants={staggerItem} className="relative">
+                <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 <Input
-                  placeholder="Search by name, email, or phone..."
+                  placeholder="Search people..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10 bg-background border-border focus:border-primary transition-all duration-200"
-                  data-testid="input-search-people"
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="pl-10"
                 />
               </motion.div>
-              
+
               <motion.div variants={staggerItem}>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger 
-                    className="bg-background border-border"
-                    data-testid="select-status-filter"
-                  >
-                    <SelectValue placeholder="Status" />
+                <Select value={statusFilter} onValueChange={handleStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {statusOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="flagged">Flagged</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </motion.div>
 
               <motion.div variants={staggerItem}>
-                <Select value={volunteerLevelFilter} onValueChange={setVolunteerLevelFilter}>
-                  <SelectTrigger 
-                    className="bg-background border-border"
-                    data-testid="select-volunteer-level-filter"
-                  >
-                    <SelectValue placeholder="Volunteer Level" />
+                <Select value={validationFilter} onValueChange={handleValidationFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by validation" />
                   </SelectTrigger>
                   <SelectContent>
-                    {volunteerLevelOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </motion.div>
-
-              <motion.div variants={staggerItem}>
-                <Select value={locationFilter} onValueChange={setLocationFilter}>
-                  <SelectTrigger 
-                    className="bg-background border-border"
-                    data-testid="select-location-filter"
-                  >
-                    <SelectValue placeholder="Location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locationOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="all">All Validation States</SelectItem>
+                    <SelectItem value="valid">Valid</SelectItem>
+                    <SelectItem value="warning">Warning</SelectItem>
+                    <SelectItem value="error">Error</SelectItem>
                   </SelectContent>
                 </Select>
               </motion.div>
@@ -364,428 +370,346 @@ export default function EnhancedPeoplePage() {
               <motion.div variants={staggerItem}>
                 <Button 
                   variant="outline" 
-                  onClick={clearFilters} 
-                  className="w-full bg-background border-border hover:bg-muted/50"
-                  data-testid="button-clear-filters"
+                  onClick={clearFilters}
+                  className="w-full"
                 >
                   <Filter className="w-4 h-4 mr-2" />
                   Clear Filters
                 </Button>
               </motion.div>
             </motion.div>
-
-            {/* Loading State with Enhanced Skeletons */}
-            <AnimatePresence mode="wait">
-              {isLoading && (
-                <motion.div
-                  key="loading"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <TableSkeleton rows={5} />
-                </motion.div>
-              )}
-
-              {/* Error State */}
-              {error && (
-                <motion.div
-                  key="error"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="text-center py-8"
-                >
-                  <p className="text-destructive">Failed to load people data</p>
-                </motion.div>
-              )}
-
-              {/* Enhanced Data Table with Context Menus */}
-              {data && !isLoading && (
-                <motion.div
-                  key="data"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                >
-                  <TableContextMenu
-                    selectedCount={selectedIds.size}
-                    onSelectAll={handleSelectAll}
-                    onDeselectAll={handleDeselectAll}
-                    onExport={() => console.log("Export")}
-                  >
-                    <div className="border rounded-lg overflow-hidden bg-background">
-                      <Table>
-                        <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                          <TableRow>
-                            <TableHead className="w-8">Expand</TableHead>
-                            <TableHead className="w-8">
-                              <input
-                                type="checkbox"
-                                checked={allSelected}
-                                onChange={(e) => e.target.checked ? handleSelectAll() : handleDeselectAll()}
-                                className="rounded border-gray-300"
-                              />
-                            </TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Contact</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Progress</TableHead>
-                            <TableHead>Validation</TableHead>
-                            <TableHead>Relations</TableHead>
-                            <TableHead className="w-12"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          <AnimatePresence>
-                            {data.people.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                                  No people found matching your criteria
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              data.people.map((person, index) => {
-                                // Memoize calculations to avoid repeated parsing
-                                const petitionGoal = person.petitionGoal ? parseInt(person.petitionGoal) : 0;
-                                const petitionCollected = person.petitionCollected ? parseInt(person.petitionCollected) : 0;
-                                const petitionProgress = petitionGoal > 0 ? Math.round((petitionCollected / petitionGoal) * 100) : 0;
-                                const taskProgress = person.taskCompletionRate ? parseInt(person.taskCompletionRate) : 0;
-                                const formattedLastContact = person.lastContact ? format(new Date(person.lastContact), "MMM d, yyyy") : "Never";
-                                
-                                const expandedContent = (
-                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {/* Contact Details */}
-                                    <div className="space-y-3">
-                                      <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Contact Information</h4>
-                                      <div className="space-y-2">
-                                        {person.email && (
-                                          <div className="flex items-center space-x-2">
-                                            <Mail className="w-4 h-4 text-muted-foreground" />
-                                            <span className="text-sm">{person.email}</span>
-                                          </div>
-                                        )}
-                                        {person.phone && (
-                                          <div className="flex items-center space-x-2">
-                                            <Phone className="w-4 h-4 text-muted-foreground" />
-                                            <span className="text-sm">{person.phone}</span>
-                                          </div>
-                                        )}
-                                        {person.location && (
-                                          <div className="flex items-center space-x-2">
-                                            <MapPin className="w-4 h-4 text-muted-foreground" />
-                                            <span className="text-sm">{person.location}</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Progress Metrics */}
-                                    <div className="space-y-3">
-                                      <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Progress Metrics</h4>
-                                      <div className="space-y-3">
-                                        <div>
-                                          <div className="flex justify-between text-sm mb-1">
-                                            <span>Petition Collection</span>
-                                            <span>{petitionCollected}/{petitionGoal}</span>
-                                          </div>
-                                          <Progress value={petitionProgress} className="h-2" />
-                                        </div>
-                                        <div>
-                                          <div className="flex justify-between text-sm mb-1">
-                                            <span>Task Completion</span>
-                                            <span>{taskProgress}%</span>
-                                          </div>
-                                          <Progress value={taskProgress} className="h-2" />
-                                        </div>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Activity Summary */}
-                                    <div className="space-y-3">
-                                      <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Activity Summary</h4>
-                                      <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-sm">Active Tasks</span>
-                                          <Badge variant="outline">{person.taskCount || 0}</Badge>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-sm">Events Attended</span>
-                                          <Badge variant="outline">{person.eventCount || 0}</Badge>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-sm">Last Contact</span>
-                                          <span className="text-sm text-muted-foreground">
-                                            {formattedLastContact}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                                
-                                return (
-                                  <PersonContextMenu
-                                    key={person.id}
-                                    person={person as any}
-                                    onEdit={() => console.log("Edit", person.id)}
-                                    onDelete={() => console.log("Delete", person.id)}
-                                    onView={() => handleRowClick(person)}
-                                    onContact={() => console.log("Contact", person.id)}
-                                  >
-                                    <ExpandableRow expandedContent={expandedContent}>
-                                      <TableCell>
-                                        <input
-                                          type="checkbox"
-                                          checked={selectedIds.has(person.id)}
-                                          onChange={(e) => {
-                                            e.stopPropagation();
-                                            handlePersonSelect(person.id, e.target.checked);
-                                          }}
-                                          className="rounded border-gray-300"
-                                        />
-                                      </TableCell>
-                                      <TableCell className="font-medium">
-                                        <div className="flex items-center space-x-3">
-                                          <motion.div 
-                                            className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium"
-                                            whileHover={{ scale: 1.1, rotate: 5 }}
-                                            transition={{ type: "spring", damping: 20, stiffness: 300 }}
-                                          >
-                                            {person.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                                          </motion.div>
-                                          <div>
-                                            <HoverPreview
-                                              title={person.name}
-                                              content={
-                                                <div className="space-y-2">
-                                                  <p className="text-sm">Volunteer Level: <Badge className={getVolunteerLevelColor(person.volunteerLevel)}>{person.volunteerLevel}</Badge></p>
-                                                  <p className="text-sm">Location: {person.location || "Not specified"}</p>
-                                                  <p className="text-sm">Tasks: {person.taskCount || 0} active</p>
-                                                </div>
-                                              }
-                                            >
-                                              <span 
-                                                className="hover:text-primary transition-colors cursor-pointer font-medium"
-                                                onClick={() => handleRowClick(person)}
-                                              >
-                                                {person.name}
-                                              </span>
-                                            </HoverPreview>
-                                            <div className="text-xs text-muted-foreground">
-                                              {person.volunteerLevel}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="space-y-1">
-                                          {person.email && (
-                                            <div className="flex items-center space-x-1 text-sm">
-                                              <Mail className="w-3 h-3 text-muted-foreground" />
-                                              <span className="truncate max-w-[120px]">{person.email}</span>
-                                            </div>
-                                          )}
-                                          {person.phone && (
-                                            <div className="flex items-center space-x-1 text-sm">
-                                              <Phone className="w-3 h-3 text-muted-foreground" />
-                                              <span>{person.phone}</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="flex items-center space-x-2">
-                                          <StatusBadge status={person.status as any} />
-                                          <TrafficLightIndicator 
-                                            state={person.dataValidationState || "valid"} 
-                                            showIcon={false}
-                                          />
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="space-y-2">
-                                          <div>
-                                            <div className="flex justify-between text-xs mb-1">
-                                              <span>Petitions</span>
-                                              <span>{petitionProgress}%</span>
-                                            </div>
-                                            <Progress value={petitionProgress} className="h-1" />
-                                          </div>
-                                          <div>
-                                            <div className="flex justify-between text-xs mb-1">
-                                              <span>Tasks</span>
-                                              <span>{taskProgress}%</span>
-                                            </div>
-                                            <Progress value={taskProgress} className="h-1" />
-                                          </div>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <TrafficLightIndicator 
-                                          state={person.dataValidationState || "valid"} 
-                                        />
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="flex items-center space-x-2">
-                                          <HoverPreview
-                                            title="Tasks"
-                                            content={
-                                              <div className="space-y-1">
-                                                <p className="text-sm">Active tasks: {person.taskCount || 0}</p>
-                                                <p className="text-sm">Completion rate: {taskProgress}%</p>
-                                              </div>
-                                            }
-                                          >
-                                            <Badge variant="outline" className="text-xs">
-                                              <CheckSquare className="w-3 h-3 mr-1" />
-                                              {person.taskCount || 0}
-                                            </Badge>
-                                          </HoverPreview>
-                                          <HoverPreview
-                                            title="Events"
-                                            content={
-                                              <div className="space-y-1">
-                                                <p className="text-sm">Events attended: {person.eventCount || 0}</p>
-                                                <p className="text-sm">Last event: This month</p>
-                                              </div>
-                                            }
-                                          >
-                                            <Badge variant="outline" className="text-xs">
-                                              <Calendar className="w-3 h-3 mr-1" />
-                                              {person.eventCount || 0}
-                                            </Badge>
-                                          </HoverPreview>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild>
-                                            <Button 
-                                              variant="ghost" 
-                                              size="sm" 
-                                              className="h-8 w-8 p-0 hover:bg-white/20"
-                                              data-testid={`button-menu-person-${person.id}`}
-                                            >
-                                              <MoreHorizontal className="w-4 h-4" />
-                                            </Button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end" className="bg-white/95 dark:bg-black/95 backdrop-blur-xl">
-                                            <DropdownMenuItem data-testid={`button-edit-person-${person.id}`}>
-                                              <Edit className="w-4 h-4 mr-2" />
-                                              Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem data-testid={`button-contact-person-${person.id}`}>
-                                              <Mail className="w-4 h-4 mr-2" />
-                                              Contact
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem 
-                                              className="text-destructive"
-                                              data-testid={`button-delete-person-${person.id}`}
-                                            >
-                                              <Trash2 className="w-4 h-4 mr-2" />
-                                              Delete
-                                            </DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                      </TableCell>
-                                    </ExpandableRow>
-                                  </PersonContextMenu>
-                                );
-                              })
-                            )}
-                          </AnimatePresence>
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </TableContextMenu>
-
-                  {/* Enhanced Pagination */}
-                  {totalPages > 1 && (
-                    <motion.div 
-                      className="flex items-center justify-between mt-6"
-                      variants={fadeInUp}
-                      initial="initial"
-                      animate="animate"
-                      transition={{ delay: 0.3 }}
-                    >
-                      <div className="text-sm text-muted-foreground">
-                        Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, data.total)} of {data.total} people
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handlePreviousPage}
-                          disabled={currentPage === 1}
-                          className="bg-white/50 dark:bg-black/50 backdrop-blur-sm"
-                          data-testid="button-previous-page"
-                        >
-                          <ChevronLeft className="w-4 h-4 mr-2" />
-                          Previous
-                        </Button>
-                        
-                        <div className="flex items-center space-x-1">
-                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                            const pageNum = i + 1;
-                            return (
-                              <Button
-                                key={pageNum}
-                                variant={currentPage === pageNum ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => handlePageClick(pageNum)}
-                                className={currentPage === pageNum ? "" : "bg-background border-border"}
-                                data-testid={`button-page-${pageNum}`}
-                              >
-                                {pageNum}
-                              </Button>
-                            );
-                          })}
-                        </div>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleNextPage}
-                          disabled={currentPage === totalPages}
-                          className="bg-white/50 dark:bg-black/50 backdrop-blur-sm"
-                          data-testid="button-next-page"
-                        >
-                          Next
-                          <ChevronRight className="w-4 h-4 ml-2" />
-                        </Button>
-                      </div>
-                    </motion.div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* Floating Action Buttons */}
-      <FloatingActionButton
-        icon={Plus}
-        label="Add New Person"
-        onClick={() => setIsCreateFormOpen(true)}
-        className="bottom-6 right-6"
-        variant="primary"
-      />
-      
-      <FloatingActionButton
-        icon={Zap}
-        label="Quick Assign Task"
-        onClick={() => console.log("Quick assign task")}
-        className="bottom-6 right-24"
-        variant="secondary"
-      />
+      {isLoading ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading people...</p>
+        </div>
+      ) : (
+        <motion.div variants={fadeInUp}>
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={handleSelectAll}
+                        ref={(ref) => {
+                          if (ref) (ref as any).indeterminate = isIndeterminate;
+                        }}
+                      />
+                    </TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Petition Progress</TableHead>
+                    <TableHead>Task Progress</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Validation</TableHead>
+                    <TableHead>Last Contact</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <AnimatePresence>
+                  <TableBody>
+                    {data?.people.map((person) => (
+                      <PersonRow
+                        key={person.id}
+                        person={person}
+                        isSelected={selectedPeople.has(person.id)}
+                        isExpanded={expandedRows.has(person.id)}
+                        onSelect={(checked) => handleSelectPerson(person.id, checked)}
+                        onToggleExpand={() => handleRowClick(person.id)}
+                      />
+                    ))}
+                  </TableBody>
+                </AnimatePresence>
+              </Table>
 
-      {/* Enhanced Create Person Form */}
-      <CreatePersonForm 
-        open={isCreateFormOpen}
-        onOpenChange={setIsCreateFormOpen}
-      />
+              {/* Pagination */}
+              <motion.div 
+                className="flex items-center justify-between p-4 border-t"
+                variants={fadeInUp}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">
+                    Showing {data?.people.length || 0} of {data?.total || 0} people
+                  </span>
+                  <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePreviousPage}
+                    disabled={currentPage <= 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </Button>
+                  
+                  <span className="px-3 py-1 text-sm">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNextPage}
+                    disabled={currentPage >= totalPages}
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </motion.div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-3">
+        <Button
+          size="lg"
+          className="rounded-full w-14 h-14 shadow-lg"
+          onClick={() => setShowCreateForm(true)}
+        >
+          <Plus className="w-6 h-6" />
+        </Button>
+        
+        <Button
+          variant="secondary"
+          size="lg"
+          className="rounded-full w-14 h-14 shadow-lg"
+          onClick={() => console.log('Bulk actions')}
+        >
+          <Zap className="w-6 h-6" />
+        </Button>
+      </div>
+
+      {/* Create Person Modal */}
+      {showCreateForm && (
+        <CreatePersonForm
+          open={showCreateForm}
+          onOpenChange={(open) => setShowCreateForm(open)}
+        />
+      )}
     </motion.div>
   );
 }
+
+// Memoized PersonRow component to prevent unnecessary re-renders
+const PersonRow = React.memo<{
+  person: EnhancedPerson;
+  isSelected: boolean;
+  isExpanded: boolean;
+  onSelect: (checked: boolean) => void;
+  onToggleExpand: () => void;
+}>(({ person, isSelected, isExpanded, onSelect, onToggleExpand }) => {
+  // Memoized calculations
+  const petitionProgress = useMemo(() => {
+    const collected = parseInt(person.petitionCollected || "0");
+    const goal = parseInt(person.petitionGoal || "1");
+    return Math.min(100, Math.round((collected / goal) * 100));
+  }, [person.petitionCollected, person.petitionGoal]);
+
+  const taskProgress = useMemo(() => {
+    return parseInt(person.taskCompletionRate || "0");
+  }, [person.taskCompletionRate]);
+
+  const formattedLastContact = useMemo(() => {
+    if (!person.lastContact) return "Never";
+    const date = new Date(person.lastContact);
+    return date.toLocaleDateString();
+  }, [person.lastContact]);
+
+  const expandedContent = useMemo(() => (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      className="px-12 py-4 bg-gray-50"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+          <h4 className="font-medium mb-3 flex items-center gap-2">
+            <User className="w-4 h-4" />
+            Personal Information
+          </h4>
+          <div className="space-y-2 text-sm">
+            <p><span className="font-medium">Date of Birth:</span> {person.dateOfBirth || "Not provided"}</p>
+            <p><span className="font-medium">Gender:</span> {person.gender || "Not specified"}</p>
+            <p><span className="font-medium">Registration Date:</span> {new Date(person.createdAt).toLocaleDateString()}</p>
+          </div>
+        </div>
+        
+        <div>
+          <h4 className="font-medium mb-3 flex items-center gap-2">
+            <CheckSquare className="w-4 h-4" />
+            Activity Summary
+          </h4>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Petition Progress</span>
+              <span className="text-sm font-medium">{petitionProgress}%</span>
+            </div>
+            <Progress value={petitionProgress} className="h-2" />
+            
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Task Completion</span>
+              <span className="text-sm font-medium">{taskProgress}%</span>
+            </div>
+            <Progress value={taskProgress} className="h-2" />
+          </div>
+        </div>
+        
+        <div>
+          <h4 className="font-medium mb-3 flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            Recent Activity
+          </h4>
+          <div className="space-y-2 text-sm">
+            <p><span className="font-medium">Tasks:</span> {person.taskCount} active</p>
+            <p><span className="font-medium">Events:</span> {person.eventCount} upcoming</p>
+            <p><span className="font-medium">Last Activity:</span> {Math.floor(Math.random() * 7) + 1} days ago</p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  ), [person, petitionProgress, taskProgress]);
+
+  return (
+    <React.Fragment>
+      <motion.tr
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="hover:bg-gray-50 cursor-pointer"
+        onClick={onToggleExpand}
+      >
+        <TableCell onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onSelect}
+          />
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-3">
+            <div>
+              <div className="font-medium">{person.name}</div>
+              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </div>
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm">
+              <Mail className="w-3 h-3" />
+              {person.email}
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="w-3 h-3" />
+              {person.phone || "Not provided"}
+            </div>
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-2 text-sm">
+            <MapPin className="w-3 h-3" />
+            {person.address || "Not provided"}
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="space-y-1">
+            <div className="flex justify-between text-sm">
+              <span>{person.petitionCollected || 0}/{person.petitionGoal || 0}</span>
+              <span>{petitionProgress}%</span>
+            </div>
+            <Progress value={petitionProgress} className="h-2" />
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="space-y-1">
+            <div className="flex justify-between text-sm">
+              <span>Tasks</span>
+              <span>{taskProgress}%</span>
+            </div>
+            <Progress value={taskProgress} className="h-2" />
+          </div>
+        </TableCell>
+        <TableCell>
+          <Badge 
+            variant={
+              person.status === "active" ? "default" :
+              person.status === "pending" ? "secondary" :
+              person.status === "flagged" ? "destructive" : "outline"
+            }
+          >
+            {person.status}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-2">
+            {person.dataValidationState === "valid" && <div className="w-2 h-2 rounded-full bg-green-500" />}
+            {person.dataValidationState === "warning" && <div className="w-2 h-2 rounded-full bg-yellow-500" />}
+            {person.dataValidationState === "error" && <div className="w-2 h-2 rounded-full bg-red-500" />}
+            <span className="text-sm capitalize">{person.dataValidationState}</span>
+          </div>
+        </TableCell>
+        <TableCell className="text-sm">
+          {formattedLastContact}
+        </TableCell>
+        <TableCell onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setLocation(`/people/${person.id}`)}>
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                View Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => console.log('Contact', person.id)}>
+                Contact
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-red-600">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TableCell>
+      </motion.tr>
+      
+      {isExpanded && (
+        <motion.tr key={`${person.id}-expanded`}>
+          <TableCell colSpan={10} className="p-0">
+            {expandedContent}
+          </TableCell>
+        </motion.tr>
+      )}
+    </React.Fragment>
+  );
+});
+
+PersonRow.displayName = "PersonRow";
