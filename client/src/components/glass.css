@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 shadow-lg overflow-hidden;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    transition: all 0.3s ease;
+  }
+
+  .glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2);
+  }
+
+  .glass-card-subtle {
+    @apply bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 shadow-sm overflow-hidden;
+    backdrop-filter: blur(8px) saturate(160%);
+    -webkit-backdrop-filter: blur(8px) saturate(160%);
+  }
+
+  .icon-glass {
+    @apply p-2 rounded-lg flex items-center justify-center;
+    backdrop-filter: blur(8px) saturate(160%);
+    -webkit-backdrop-filter: blur(8px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .icon-glass-subtle {
+    @apply p-2 rounded-lg flex items-center justify-center bg-white/5;
+    backdrop-filter: blur(4px) saturate(140%);
+    -webkit-backdrop-filter: blur(4px) saturate(140%);
+  }
+
+  .floating-card {
+    @apply bg-white/5 backdrop-blur-md rounded-xl border border-white/10 shadow-md overflow-hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .floating-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .badge-glass {
+    @apply px-2 py-0.5 rounded-full font-medium bg-white/10 backdrop-blur-sm border border-white/10;
+  }
+
+  /* Text hierarchy */
+  .text-hierarchy-1 {
+    @apply text-4xl font-bold tracking-tight;
+  }
+
+  .text-hierarchy-2 {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+
+  .text-hierarchy-3 {
+    @apply text-lg font-medium tracking-tight;
+  }
+
+  .text-body {
+    @apply text-base leading-relaxed;
+  }
+
+  .text-caption {
+    @apply text-sm text-opacity-70;
+  }
+}

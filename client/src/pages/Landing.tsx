@@ -12,7 +12,13 @@ import {
   Search,
   Activity,
   Palette,
-  Target
+  Target,
+  Sun,
+  Cloud,
+  CloudRain,
+  Wind,
+  CalendarCheck,
+  Clock
 } from "lucide-react";
 
 const containerVariants = {
@@ -196,245 +202,240 @@ const colorPalettes: Record<string, ColorPalette> = {
   }
 };
 
-// Memoized Theme Selector Component
 const ThemeSelector = memo(({ 
-  currentPalette,
   selectedPalette,
   onSelectPalette,
   isOpen,
-  onToggle 
 }: {
-  currentPalette: ColorPalette;
   selectedPalette: string;
   isOpen: boolean;
   onSelectPalette: (palette: string) => void;
-  onToggle: () => void;
 }) => {
   const paletteNames = useMemo(() => Object.keys(colorPalettes), []);
   
   return (
-    <div className="fixed top-6 right-6 z-50">
-      <div className="floating-card p-4">
-        <div 
-          className="flex items-center gap-3 cursor-pointer"
-          onClick={onToggle}
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10, height: 0 }}
+          animate={{ opacity: 1, y: 0, height: 'auto' }}
+          exit={{ opacity: 0, y: 10, height: 0 }}
+          className="grid grid-cols-2 gap-2 mt-2 overflow-hidden"
         >
-          <div className="icon-glass">
-            <Palette className="h-4 w-4" style={{ color: currentPalette.primary }} />
-          </div>
-          <span className="text-caption font-medium" style={{ color: currentPalette.primary }}>Theme</span>
-        </div>
-        <AnimatePresence>
-          {isOpen && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="grid grid-cols-2 gap-2 mt-3"
+          {paletteNames.map((paletteName) => (
+            <button
+              key={paletteName}
+              onClick={() => onSelectPalette(paletteName)}
+              className={`p-2 rounded-lg text-xs font-medium transition-all duration-200 border-2 ${selectedPalette === paletteName ? 'scale-105' : 'hover:scale-105'}`}
+              style={{
+                backgroundColor: `${colorPalettes[paletteName].primary}20`,
+                color: colorPalettes[paletteName].primary,
+                borderColor: selectedPalette === paletteName ? colorPalettes[paletteName].primary : 'transparent'
+              }}
             >
-              {paletteNames.map((paletteName) => (
-                <button
-                  key={paletteName}
-                  onClick={() => onSelectPalette(paletteName)}
-                  className={`p-2 rounded-lg text-xs font-medium transition-all duration-200 ${selectedPalette === paletteName ? 'ring-2 ring-offset-1' : 'hover:scale-105'}`}
-                  style={{ 
-                    backgroundColor: `${colorPalettes[paletteName].primary}20`,
-                    color: colorPalettes[paletteName].primary,
-                    ...(selectedPalette === paletteName && {
-                      borderColor: colorPalettes[paletteName].primary,
-                      borderWidth: '2px'
-                    })
-                  }}
-                >
-                  {paletteName.split(' ')[0]}
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-});
-
-// Optimized Gradient Background Component
-const GradientBackground = memo(({ gradient, overlay }: { gradient: string; overlay: string }) => {
-  return (
-    <div className="fixed inset-0 overflow-hidden">
-      <div 
-        className="absolute inset-0 will-change-transform"
-        style={{ 
-          background: gradient,
-          transform: 'translate3d(0,0,0)',
-          backfaceVisibility: 'hidden',
-          perspective: 1000
-        }} 
-      />
-      <div className={`absolute inset-0 ${overlay} will-change-opacity`} />
-    </div>
-  );
-});
-
-// Memoized QuickAction component
-const QuickAction = memo(({ action, currentPalette }: { action: typeof quickActions[0]; currentPalette: ColorPalette }) => {
-  return (
-    <Link href={action.href}>
-      <div className="floating-card-enhanced p-6 text-center group cursor-pointer">
-        <div 
-          className="icon-glass mx-auto mb-4 group-hover:scale-110 transition-transform duration-200 will-change-transform" 
-          style={{ backgroundColor: currentPalette.secondary + '20' }}
-        >
-          <action.icon className="h-6 w-6 transition-colors" style={{ color: currentPalette.secondary }} />
-        </div>
-        <p className="text-body font-semibold text-optimized" style={{ color: currentPalette.primary }}>{action.label}</p>
-      </div>
-    </Link>
-  );
-});
-
-// Memoized SectionCard component
-const SectionCard = memo(({ section, currentPalette }: { section: typeof mainSections[0]; currentPalette: ColorPalette }) => {
-  return (
-    <div className="floating-card-enhanced h-full">
-      <div className="p-6">
-        <div className="flex flex-col items-center text-center mb-6">
-          <div 
-            className="icon-glass mb-4 will-change-transform" 
-            style={{ backgroundColor: currentPalette.highlight + '20' }}
-          >
-            <section.icon className="h-6 w-6" style={{ color: currentPalette.highlight }} />
-          </div>
-          <div>
-            <h3 className="text-hierarchy-3 mb-2 text-optimized" style={{ color: currentPalette.primary }}>{section.title}</h3>
-            <p className="text-body text-optimized" style={{ color: currentPalette.secondary }}>
-              {section.description}
-            </p>
-          </div>
-        </div>
-        <div className="space-y-3">
-          {section.items.map((item) => (
-            <Link key={item.label} href={item.href}>
-              <div className="flex items-center justify-between p-3 rounded-xl hover:bg-white/50 dark:hover:bg-gray-800/50 transition-all duration-200 cursor-pointer group">
-                <span className="text-body font-medium group-hover:text-blue-600 transition-colors text-optimized" style={{ color: currentPalette.primary }}>
-                  {item.label}
-                </span>
-                {item.badge && (
-                  <span 
-                    className="badge-glass" 
-                    style={{ 
-                      backgroundColor: currentPalette.accent + '60', 
-                      color: currentPalette.primary,
-                      willChange: 'transform, opacity'
-                    }}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </div>
-            </Link>
+              {paletteName.split(' ')[0]}
+            </button>
           ))}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+});
+
+const QuickAction = memo(({ action, currentPalette }: { action: any; currentPalette: ColorPalette }) => (
+  <Link 
+    href={action.href}
+    className="quick-action-card flex items-center gap-3 p-3 rounded-lg transition-all hover:scale-105"
+    style={{ backgroundColor: currentPalette.primary + '10' }}
+  >
+    <div className="icon-glass-subtle" style={{ backgroundColor: currentPalette.primary + '15' }}>
+      <action.icon className="h-5 w-5" style={{ color: currentPalette.primary }} />
+    </div>
+    <span className="text-body font-medium" style={{ color: currentPalette.primary }}>{action.label}</span>
+  </Link>
+));
+
+const DayAtAGlance = memo(({ currentPalette }: { currentPalette: ColorPalette }) => {
+  const weather = { temp: '68°', condition: 'Sunny', icon: Sun };
+  const date = new Date();
+  const formattedDate = `${date.toLocaleString('default', { month: 'long' })} ${date.getDate()}, ${date.getFullYear()}`;
+  const formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div className="day-glance-card mb-12">
+      <div className="flex items-center gap-4">
+        <weather.icon className="h-8 w-8" style={{ color: currentPalette.primary }} />
+        <div>
+          <p className="text-hierarchy-3 font-bold" style={{ color: currentPalette.primary }}>{weather.temp}</p>
+          <p className="text-caption" style={{ color: currentPalette.secondary }}>{weather.condition}</p>
         </div>
+      </div>
+      <div className="text-right">
+        <p className="text-hierarchy-3 font-bold flex items-center justify-end gap-2" style={{ color: currentPalette.primary }}><CalendarCheck className="h-5 w-5"/> {formattedDate}</p>
+        <p className="text-caption flex items-center justify-end gap-2" style={{ color: currentPalette.secondary }}><Clock className="h-4 w-4"/> {formattedTime}</p>
       </div>
     </div>
   );
 });
+
+const GradientBackground = memo(({ gradient, overlay }: { gradient: string; overlay: string }) => (
+  <div 
+    className="fixed inset-0 -z-10 h-screen w-screen opacity-90" 
+    style={{ 
+      background: `${overlay}, ${gradient}`, 
+      backgroundSize: "cover", 
+      backgroundPosition: "center", 
+      backgroundAttachment: "fixed", 
+      backdropFilter: "blur(80px) saturate(180%)", 
+      WebkitBackdropFilter: "blur(80px) saturate(180%)", 
+    }} 
+  />
+));
+const SectionCard = memo(({ section, currentPalette }: { section: any; currentPalette: ColorPalette }) => (
+  <div className="glass-card p-6">
+    <div className="flex items-center gap-4 mb-4">
+      <div className="icon-glass" style={{ backgroundColor: currentPalette.primary + '20' }}>
+        <section.icon className="h-6 w-6" style={{ color: currentPalette.primary }} />
+      </div>
+      <div>
+        <h3 className="text-hierarchy-3 font-bold" style={{ color: currentPalette.primary }}>{section.title}</h3>
+        <p className="text-caption" style={{ color: currentPalette.secondary }}>{section.description}</p>
+      </div>
+    </div>
+    <div className="space-y-2">
+      {section.items.map((item: any) => (
+        <Link 
+          href={item.href} 
+          key={item.label}
+          className="flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200 hover:scale-[1.01] hover:shadow-sm block"
+          style={{ backgroundColor: currentPalette.accent + '20', color: currentPalette.primary }}
+        >
+          <span className="text-sm font-medium">{item.label}</span>
+          {item.badge && <span className="badge-glass text-xs">{item.badge}</span>}
+        </Link>
+      ))}
+    </div>
+  </div>
+));
 
 export default function Landing() {
   const [selectedPalette, setSelectedPalette] = useState("Steel Corporate");
   const [isThemeSelectorOpen, setIsThemeSelectorOpen] = useState(false);
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(true);
   const currentPalette = useMemo(() => colorPalettes[selectedPalette], [selectedPalette]);
 
-  // Memoize handlers
   const handlePaletteChange = useCallback((paletteName: string) => {
     setSelectedPalette(paletteName);
-    setIsThemeSelectorOpen(false);
   }, []);
 
   const toggleThemeSelector = useCallback(() => {
     setIsThemeSelectorOpen(prev => !prev);
   }, []);
 
-  // Memoize the main content to prevent unnecessary re-renders
-  const memoizedContent = useMemo(() => (
-    <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-16 md:py-24 lg:py-32">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 100, damping: 15 }}
-        className="mb-16 text-center"
-      >
-        <h1 className="text-hierarchy-1 mb-6 text-optimized" style={{ color: currentPalette.primary }}>
-          Campaign CRM
-        </h1>
-        <p className="text-body-large max-w-2xl mx-auto text-optimized" style={{ color: currentPalette.secondary }}>
-          Welcome back! Here's your campaign command center.
-        </p>
-      </motion.div>
-
-      {/* Quick Actions */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="mb-20"
-      >
-        <h2 className="text-hierarchy-3 mb-8 flex items-center justify-start gap-3 text-optimized" style={{ color: currentPalette.primary }}>
-          <div className="icon-glass will-change-transform" style={{ backgroundColor: currentPalette.primary + '20' }}>
-            <Activity className="h-5 w-5" style={{ color: currentPalette.primary }} />
-          </div>
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {quickActions.map((action, index) => (
-            <motion.div key={action.label} variants={itemVariants}>
-              <QuickAction action={action} currentPalette={currentPalette} />
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Main Sections */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <h2 className="text-hierarchy-3 mb-8 flex items-center justify-start gap-3 text-optimized" style={{ color: currentPalette.primary }}>
-          <div className="icon-glass will-change-transform" style={{ backgroundColor: currentPalette.accent + '40' }}>
-            <Network className="h-5 w-5" style={{ color: currentPalette.primary }} />
-          </div>
-          Campaign Sections
-        </h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {mainSections.map((section, index) => (
-            <motion.div key={section.title} variants={itemVariants}>
-              <SectionCard section={section} currentPalette={currentPalette} />
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-    </div>
-  ), [currentPalette]);
+  const toggleQuickActions = useCallback(() => {
+    setIsQuickActionsOpen(prev => !prev);
+  }, []);
 
   return (
-    <div className="min-h-screen relative overflow-hidden scroll-optimized" style={{ backgroundColor: currentPalette.background }}>
-      {/* Optimized Gradient Background */}
-      <GradientBackground 
-        gradient={currentPalette.gradient} 
-        overlay={currentPalette.overlay} 
-      />
+    <div className="min-h-screen relative overflow-x-hidden overflow-y-auto bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      {/* Quick Actions Sidebar */}
+      <div className="fixed left-6 top-1/2 -translate-y-1/2 z-50">
+        <div className="flex flex-col items-center gap-4">
+          {/* Quick Actions Button */}
+          <div className="relative">
+            <button 
+              onClick={toggleQuickActions} 
+              className="glass-card p-3 cursor-pointer group hover:scale-105 transition-transform" 
+              aria-label="Quick actions"
+            >
+              <div className="icon-glass" style={{ backgroundColor: currentPalette.accent + '40' }}> 
+                <Users className="h-5 w-5" style={{ color: currentPalette.primary }} />
+              </div>
+            </button>
+          </div>
+          
+          {/* Theme Selector Button */}
+          <div className="relative">
+            <button 
+              onClick={toggleThemeSelector} 
+              className="glass-card p-3 cursor-pointer group hover:scale-105 transition-transform" 
+              aria-label="Theme selector"
+            >
+              <div className="icon-glass" style={{ backgroundColor: currentPalette.accent + '40' }}> 
+                <Palette className="h-5 w-5" style={{ color: currentPalette.primary }} /> 
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
       
-      {/* Memoized Theme Selector */}
-      <ThemeSelector
-        currentPalette={currentPalette}
-        selectedPalette={selectedPalette}
-        isOpen={isThemeSelectorOpen}
-        onSelectPalette={handlePaletteChange}
-        onToggle={toggleThemeSelector}
-      />
-      
-      {memoizedContent}
+      {/* Main Content */}
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <DayAtAGlance currentPalette={currentPalette} />
+        {/* Top cards removed per design feedback */}
+
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative flex items-center justify-center mb-16"
+        >
+          {/* Center Header */}
+          <div className="text-center relative">
+            <div 
+              className="absolute left-1/2 transform -translate-x-1/2 -inset-y-6 rounded-3xl backdrop-blur-sm border border-white/20 shadow-2xl w-[calc(100%+4rem)] max-w-3xl"
+              style={{ 
+                background: `linear-gradient(135deg, ${currentPalette.accent}40, ${currentPalette.secondary}20)`,
+                boxShadow: `0 25px 50px -12px ${currentPalette.primary}20, inset 0 1px 0 rgba(255,255,255,0.1)`
+              }}
+            />
+            <div className="relative">
+              <h1 className="text-hierarchy-1 font-bold tracking-tighter" style={{ color: currentPalette.primary }}>People Management</h1>
+              <p className="text-hierarchy-3 mt-2 font-medium" style={{ color: currentPalette.secondary }}>A Better Way to Campaign</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <AnimatePresence>
+          {isQuickActionsOpen && (
+            <motion.div
+              initial={{ opacity: 0, x: -100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -100 }}
+              transition={{ duration: 0.3 }}
+              className="fixed left-20 top-1/2 -translate-y-1/2 z-40"
+            >
+              <div className="flex flex-col gap-3">
+                {quickActions.map((action) => (
+                  <motion.div key={action.label} variants={itemVariants}>
+                    <Link 
+                      href={action.href}
+                      className="glass-card p-3 cursor-pointer group hover:scale-105 transition-transform flex items-center gap-3 block"
+                    >
+                      <div className="icon-glass-subtle" style={{ backgroundColor: currentPalette.primary + '15' }}>
+                        <action.icon className="h-4 w-4" style={{ color: currentPalette.primary }} />
+                      </div>
+                      <span className="text-caption font-medium whitespace-nowrap" style={{ color: currentPalette.primary }}>
+                        {action.label}
+                      </span>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="mt-12">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+            {mainSections.map((section) => (
+              <motion.div key={section.title} variants={itemVariants}>
+                <SectionCard section={section} currentPalette={currentPalette} />
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 }
